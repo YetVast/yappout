@@ -133,7 +133,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Quality Verification Commands
 
-- **Unit Tests:** `npm test` (Runs 37 automated Vitest unit tests across 8 test suites)
+- **Unit Tests:** `npm test` (Runs 38 automated Vitest unit tests across 8 test suites)
 - **Type Checking:** `npm run typecheck` (`tsc --noEmit`)
 - **Linting:** `npm run lint` (`eslint .`)
 - **Production Build:** `npm run build` (`next build`)
@@ -161,3 +161,12 @@ This implementation strictly complies with the Yet Vast Solutions Engineering St
 - **Zero DOM Mutation:** Highlighting is completely isolated from the document DOM tree via fixed Range overlays.
 - **Monotonic Sessions:** All asynchronous speech synthesis operations are protected against stale callbacks.
 - **Single Source of Truth:** Product specifications and sample Markdown content are maintained centrally in `public/yappout-info.json`.
+
+---
+
+## 8. Canonical Documentation
+
+For the comprehensive product architecture, user workflows, complete feature inventory, speech lifecycle sequence diagrams, and engineering standards compliance, refer to:
+
+- [YappOut V0 Product and Technical Documentation](docs/YAPPOUT_V0_PRODUCT_AND_TECHNICAL_DOCUMENTATION.md)
+- [Final Codebase Audit Record](docs/implementation/2026-11-16-yappout-v0-final-audit.md)
