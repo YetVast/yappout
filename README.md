@@ -22,7 +22,7 @@ No authentication, registration, database, persistence, or external backend is r
 
 ## 2. Core V0 Features
 
-- **Responsive & Collapsible Content Input Workspace:** Large multiline text editor supporting plain text and Markdown without arbitrary character limits. During playback, the editor automatically minimizes to keep the reading canvas in focus while leaving the title and expand/collapse controls accessible.
+- **Responsive & Collapsible Content Input Workspace:** Large multiline text editor supporting plain text and Markdown without arbitrary character limits. When expanded, the Clear action is accessible on the title row immediately before the collapse button. During playback, the editor automatically minimizes to keep the reading canvas in focus while leaving the title and expand/collapse controls accessible.
 - **Multiple Reading Highlight Modes:** Cycle seamlessly between four distinct visual presentation treatments using the highlight mode selector:
   1. **Box highlight:** Canonical YVS Yellow outline with Indigo-Violet outer shadow around line rects.
   2. **Underline:** Solid underline bar anchored directly along the bottom of the active sentence.
@@ -34,7 +34,7 @@ No authentication, registration, database, persistence, or external backend is r
 - **Subtle Inline Gesture Guidance:** The double-click/double-tap seek instruction is positioned directly beneath the segment metadata in the player toolbar.
 - **Viewport Auto-Scrolling:** Smoothly scrolls the reading canvas container to maintain the active segment comfortably within view with an 80px margin buffer.
 - **In-Flight Speed Cycling:** Cycles playback speed through `1× → 1.5× → 2× → 0.5× → 0.75× → 1×`. Changing speeds continues playback from the current segment without restarting from the beginning.
-- **Reorganized Player Controls:** Clean control hierarchy placing the Highlight Mode selector, Speed selector, and Segment metadata & progress on the left, with the prominent YappOut playback button on the right.
+- **Reorganized Player Controls:** Clean control hierarchy placing the information group (word count, reading duration, and segment information/progress) on the left, and the controls group (highlight mode selector, speed selector, and prominent YappOut playback button) on the right.
 - **Single Source-of-Truth Product Information:** All product specifications and sample content reside in `public/yappout-info.json`, loaded on demand via the compact `v0` button in the header or contextual title-side action.
 - **Monotonic Session Guards:** Every play, stop, seek, or speed change increments a monotonic `sessionIdRef` token, completely preventing stale, out-of-order asynchronous TTS callbacks from causing state desynchronization.
 - **Yet Vast Solutions Design System:** Built using canonical brand colors:

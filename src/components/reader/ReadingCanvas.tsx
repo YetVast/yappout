@@ -46,10 +46,6 @@ export function ReadingCanvas({
 
   return (
     <div className={styles.canvasWrapper}>
-      <div className={styles.canvasHeader}>
-        <span>Reading Canvas</span>
-      </div>
-
       <div ref={scrollContainerRef} className={styles.scrollContainer}>
         {!hasContent ? (
           <div className={styles.emptyState}>

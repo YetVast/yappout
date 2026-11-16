@@ -1,6 +1,6 @@
 'use client';
 // src/components/player/PlayerControls.tsx
-// Unified playback toolbar with highlight mode selector, speed cycle, segment metadata, and YappOut action
+// Unified playback toolbar: Left info group (words, duration, segments) and Right controls group (highlight, speed, yappout)
 
 import { Type, Clock, MousePointerClick } from 'lucide-react';
 import { PlaybackState, HighlightMode } from '@/types';
@@ -46,75 +46,65 @@ export function PlayerControls({
 
   return (
     <div className={styles.controlsBar}>
+      {/* Left information group: 1. Word count, 2. Duration, 3. Segments & progress */}
       <div className={styles.leftGroup}>
-        {/* 1. Reading Highlight Mode Selector */}
+        <div className={styles.infoRow}>
+          <span className={styles.metaStat} title="Word count">
+            <Type size={14} />
+            <span>
+              {wordCount.toLocaleString()} {wordCount === 1 ? 'word' : 'words'}
+            </span>
+          </span>
+
+          <span className={styles.metaStat} title="Estimated listening duration">
+            <Clock size={14} />
+            <span>{readingTime}</span>
+          </span>
+
+          <span className={styles.segmentBadge}>
+            {isPlaying || playbackState === 'stopped'
+              ? `Segment ${Math.min(currentSegmentIndex + 1, totalSegments)} / ${totalSegments}`
+              : `${totalSegments} ${totalSegments === 1 ? 'segment' : 'segments'}`}
+          </span>
+
+          {hasContent && totalSegments > 0 && (
+            <div
+              className={styles.progressTrack}
+              role="progressbar"
+              aria-valuenow={progressPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Reading progress"
+            >
+              <div
+                className={styles.progressBar}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Subtle inline seek instruction */}
+        <span className={styles.seekInstruction}>
+          <MousePointerClick size={12} />
+          <span>Double-click or double-tap any sentence to seek</span>
+        </span>
+      </div>
+
+      {/* Right controls group: 1. Highlight mode, 2. Speed, 3. YappOut playback button */}
+      <div className={styles.rightGroup}>
         <HighlightModeSelector
           mode={highlightMode}
           onCycle={onCycleHighlightMode}
           disabled={!hasContent}
         />
 
-        {/* 2. Playback Speed Selector */}
         <YappOutSpeed
           speedLabel={speedLabel}
           onCycle={onCycleSpeed}
           disabled={!hasContent}
         />
 
-        {/* 3. Segment metadata, progress, word count, and duration */}
-        <div className={styles.segmentInfoBlock}>
-          <div className={styles.statusRow}>
-            {hasContent && totalSegments > 0 && (
-              <>
-                <span className={styles.segmentBadge}>
-                  {isPlaying || playbackState === 'stopped'
-                    ? `Segment ${Math.min(currentSegmentIndex + 1, totalSegments)} / ${totalSegments}`
-                    : `${totalSegments} ${totalSegments === 1 ? 'segment' : 'segments'}`}
-                </span>
-
-                <div
-                  className={styles.progressTrack}
-                  role="progressbar"
-                  aria-valuenow={progressPercent}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label="Reading progress"
-                >
-                  <div
-                    className={styles.progressBar}
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-              </>
-            )}
-
-            {hasContent && (
-              <>
-                <span className={styles.metaStat} title="Word count">
-                  <Type size={13} />
-                  <span>
-                    {wordCount.toLocaleString()} {wordCount === 1 ? 'word' : 'words'}
-                  </span>
-                </span>
-
-                <span className={styles.metaStat} title="Estimated listening duration">
-                  <Clock size={13} />
-                  <span>{readingTime}</span>
-                </span>
-              </>
-            )}
-          </div>
-
-          {/* Double-click instruction immediately below segment information */}
-          <span className={styles.seekInstruction}>
-            <MousePointerClick size={12} />
-            <span>Double-click or double-tap any sentence to seek</span>
-          </span>
-        </div>
-      </div>
-
-      <div className={styles.rightGroup}>
-        {/* YappOut playback button, aligned to far right */}
         <YappOutButton
           playbackState={playbackState}
           disabled={!hasContent}

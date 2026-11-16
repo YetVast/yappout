@@ -9,18 +9,6 @@
   flex-direction: column;
 }
 
-.canvasHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.6rem 1.25rem;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-subtle);
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-
 .scrollContainer {
   padding: 2rem 2.5rem;
   max-height: 580px;

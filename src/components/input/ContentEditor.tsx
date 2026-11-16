@@ -52,15 +52,27 @@ export function ContentEditor({
               <ChevronDown size={18} />
             </button>
           ) : hasContent ? (
-            <button
-              type="button"
-              className={styles.titleControlBtn}
-              onClick={onToggleMinimize}
-              aria-label="Minimize editor"
-              title="Minimize editor"
-            >
-              <ChevronUp size={18} />
-            </button>
+            <>
+              <button
+                type="button"
+                className={styles.titleClearBtn}
+                onClick={onClear}
+                aria-label="Clear all content"
+                title="Clear document title and content"
+              >
+                <Trash2 size={15} />
+                <span>Clear</span>
+              </button>
+              <button
+                type="button"
+                className={styles.titleControlBtn}
+                onClick={onToggleMinimize}
+                aria-label="Minimize editor"
+                title="Minimize editor"
+              >
+                <ChevronUp size={18} />
+              </button>
+            </>
           ) : (
             <button
               type="button"
@@ -86,24 +98,6 @@ export function ContentEditor({
             aria-label="Reading Content"
             rows={8}
           />
-
-          {hasContent && (
-            <div className={styles.metaFooter}>
-              <div className={styles.footerPlaceholder} />
-              <div className={styles.actions}>
-                <button
-                  type="button"
-                  className={`${styles.btnSecondary} ${styles.destructive}`}
-                  onClick={onClear}
-                  title="Clear all text"
-                  aria-label="Clear all text"
-                >
-                  <Trash2 size={14} />
-                  <span>Clear</span>
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>

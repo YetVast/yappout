@@ -38,7 +38,37 @@
 .titleAction {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
   flex-shrink: 0;
+}
+
+.titleClearBtn {
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.titleClearBtn:hover {
+  color: #DC2626;
+  border-color: #DC2626;
+  background: rgba(220, 38, 38, 0.06);
+}
+
+[data-theme='dark'] .titleClearBtn:hover {
+  color: #EF4444;
+  border-color: #EF4444;
+  background: rgba(239, 68, 68, 0.12);
 }
 
 .titleControlBtn {
@@ -108,55 +138,4 @@
 
 .textarea::placeholder {
   color: var(--text-muted);
-}
-
-.metaFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.6rem 1rem;
-  background: var(--bg-secondary);
-  border-top: 1px solid var(--border-subtle);
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.footerPlaceholder {
-  flex: 1;
-}
-
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-left: auto;
-}
-
-.btnSecondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.65rem;
-  font-size: 0.8rem;
-  font-weight: 500;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  transition: all var(--transition-fast);
-  cursor: pointer;
-}
-
-.btnSecondary:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border-color: var(--border-strong);
-}
-
-.destructive:hover {
-  color: #DC2626;
-  border-color: #DC2626;
-  background: rgba(220, 38, 38, 0.05);
 }

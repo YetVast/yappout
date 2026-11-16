@@ -6,6 +6,7 @@ import { PlayerControls } from '@/components/player/PlayerControls';
 import { HighlightModeSelector } from '@/components/player/HighlightModeSelector';
 import { Header } from '@/components/layout/Header';
 import { ContentEditor } from '@/components/input/ContentEditor';
+import { ReadingCanvas } from '@/components/reader/ReadingCanvas';
 import { YappoutHighlight } from '@/components/reader/YappoutHighlight';
 import { HIGHLIGHT_MODES, getNextHighlightMode } from '@/constants';
 import { HighlightMode } from '@/types';
@@ -253,14 +254,19 @@ describe('Player UI Components', () => {
     const toggleBtn = container.querySelector('button[aria-label="Expand editor"]') as HTMLButtonElement;
     expect(toggleBtn).not.toBeNull();
 
+    // Clear button is hidden when minimized
+    const clearBtn = container.querySelector('button[aria-label="Clear all content"]');
+    expect(clearBtn).toBeNull();
+
     act(() => {
       toggleBtn.click();
     });
     expect(onToggleMinimize).toHaveBeenCalledTimes(1);
   });
 
-  it('shows full ContentEditor with collapse control when expanded with content', () => {
+  it('shows full ContentEditor with Clear and collapse controls in order when expanded with content', () => {
     const onToggleMinimize = vi.fn();
+    const onClear = vi.fn();
     act(() => {
       root.render(
         <ContentEditor
@@ -270,7 +276,7 @@ describe('Player UI Components', () => {
           onTitleChange={vi.fn()}
           onContentChange={vi.fn()}
           onToggleMinimize={onToggleMinimize}
-          onClear={vi.fn()}
+          onClear={onClear}
           onLoadSample={vi.fn()}
         />
       );
@@ -280,9 +286,26 @@ describe('Player UI Components', () => {
     const textarea = container.querySelector('textarea');
     expect(textarea).not.toBeNull();
 
+    // Clear button is rendered on the title row immediately before Minimize
+    const clearBtn = container.querySelector('button[aria-label="Clear all content"]') as HTMLButtonElement;
+    expect(clearBtn).not.toBeNull();
+    expect(clearBtn.textContent).toContain('Clear');
+
     // Minimize control is rendered
     const toggleBtn = container.querySelector('button[aria-label="Minimize editor"]') as HTMLButtonElement;
     expect(toggleBtn).not.toBeNull();
+
+    // Verify ordering: Clear appears before Minimize
+    const actionButtons = Array.from(container.querySelectorAll('button'));
+    const clearIdx = actionButtons.indexOf(clearBtn);
+    const toggleIdx = actionButtons.indexOf(toggleBtn);
+    expect(clearIdx).toBeGreaterThanOrEqual(0);
+    expect(toggleIdx).toBe(clearIdx + 1);
+
+    act(() => {
+      clearBtn.click();
+    });
+    expect(onClear).toHaveBeenCalledTimes(1);
 
     act(() => {
       toggleBtn.click();
@@ -387,6 +410,29 @@ describe('Player UI Components', () => {
     expect(overlays[0].style.background).toBe('transparent');
 
     scrollContainer.remove();
+  });
+
+  it('renders ReadingCanvas without visible Reading Canvas header label', () => {
+    const titleRef = { current: null };
+    const bodyRef = { current: null };
+    const scrollContainerRef = { current: null };
+
+    act(() => {
+      root.render(
+        <ReadingCanvas
+          title="Test Title"
+          content="Test content paragraph."
+          titleRef={titleRef}
+          bodyRef={bodyRef}
+          scrollContainerRef={scrollContainerRef}
+          activeRange={null}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain('Test Title');
+    expect(container.textContent).toContain('Test content paragraph.');
+    expect(container.textContent).not.toContain('Reading Canvas');
   });
 
   it('validates public/yappout-info.json schema and required fields', () => {

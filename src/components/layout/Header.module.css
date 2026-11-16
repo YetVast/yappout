@@ -76,6 +76,8 @@
   box-shadow: 0 1px 3px rgba(75, 0, 132, 0.25);
   cursor: pointer;
   line-height: 1.1;
+  position: relative;
+  top: 2px;
   transition: all var(--transition-fast);
   user-select: none;
 }
@@ -83,11 +85,11 @@
 .v0Badge:hover {
   background: var(--color-indigo-hover);
   border-color: var(--color-yellow);
-  transform: translateY(-1px);
+  top: 1px;
 }
 
 .v0Badge:active {
-  transform: translateY(0);
+  top: 2px;
 }
 
 .actions {
