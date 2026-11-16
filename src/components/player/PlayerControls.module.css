@@ -1,0 +1,160 @@
+/* src/components/player/PlayerControls.module.css */
+.controlsBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.leftGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.rightGroup {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Primary YappOut Button */
+.yappoutButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  user-select: none;
+  background: var(--action-primary-bg);
+  color: var(--action-primary-text);
+  border: 1px solid transparent;
+}
+
+.yappoutButton:hover:not(:disabled) {
+  background: var(--action-primary-hover);
+  transform: translateY(-1px);
+}
+
+.yappoutButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.yappoutButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+.yappoutButton.playing {
+  background: #DC2626;
+  color: #FFFFFF;
+}
+
+.yappoutButton.playing:hover:not(:disabled) {
+  background: #B91C1C;
+}
+
+/* Speed Button */
+.speedButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 60px;
+  padding: 0 0.85rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  border-radius: var(--radius-md);
+  background: var(--action-secondary-bg);
+  color: var(--action-secondary-text);
+  border: 1px solid var(--action-secondary-border);
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.speedButton:hover:not(:disabled) {
+  background: var(--action-secondary-hover);
+  border-color: var(--border-strong);
+}
+
+.speedButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Status / Progress info */
+.statusInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.segmentBadge {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  background: var(--bg-tertiary);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+}
+
+.progressTrack {
+  width: 100px;
+  height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progressBar {
+  height: 100%;
+  background: var(--color-indigo);
+  transition: width 0.2s ease;
+}
+
+[data-theme='dark'] .progressBar {
+  background: var(--color-yellow);
+}
+
+@media (max-width: 640px) {
+  .controlsBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .leftGroup {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr auto;
+  }
+
+  .yappoutButton {
+    width: 100%;
+  }
+
+  .rightGroup {
+    justify-content: space-between;
+  }
+
+  .progressTrack {
+    flex: 1;
+    max-width: 150px;
+  }
+}

@@ -1,0 +1,81 @@
+/* src/styles/tokens.css */
+/* Yet Vast Solutions canonical design tokens and theme variables */
+
+:root {
+  /* Canonical YVS Brand Colors */
+  --color-yellow: #FFFF11;
+  --color-indigo: #4B0084;
+  --color-indigo-hover: #5e02a5;
+  --color-indigo-active: #3b0068;
+
+  /* Light Theme */
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #FAF8FC;
+  --bg-tertiary: #F1EDF6;
+  --bg-surface: #FFFFFF;
+  --bg-input: #FFFFFF;
+
+  --text-primary: #17121C;
+  --text-secondary: #524A5C;
+  --text-muted: #7E748A;
+
+  --border-subtle: #E3DEE9;
+  --border-strong: #CDC5D6;
+  --border-focus: #4B0084;
+
+  --action-primary-bg: #4B0084;
+  --action-primary-text: #FFFFFF;
+  --action-primary-hover: #5e02a5;
+
+  --action-secondary-bg: #FFFFFF;
+  --action-secondary-text: #17121C;
+  --action-secondary-border: #CDC5D6;
+  --action-secondary-hover: #F1EDF6;
+
+  --highlight-inner: #FFFF11;
+  --highlight-outer: #4B0084;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  --shadow-sm: 0 1px 2px rgba(23, 18, 28, 0.05);
+  --shadow-md: 0 4px 12px rgba(75, 0, 132, 0.06);
+
+  --max-width-content: 860px;
+  --header-height: 64px;
+}
+
+[data-theme='dark'] {
+  --bg-primary: #09060D;
+  --bg-secondary: #120D1A;
+  --bg-tertiary: #1C1527;
+  --bg-surface: #120D1A;
+  --bg-input: #150F1F;
+
+  --text-primary: #F8F5FA;
+  --text-secondary: #B7ADBF;
+  --text-muted: #7A7085;
+
+  --border-subtle: #291F36;
+  --border-strong: #3F3250;
+  --border-focus: #FFFF11;
+
+  --action-primary-bg: #FFFF11;
+  --action-primary-text: #09060D;
+  --action-primary-hover: #ffea33;
+
+  --action-secondary-bg: #1C1527;
+  --action-secondary-text: #F8F5FA;
+  --action-secondary-border: #3F3250;
+  --action-secondary-hover: #291F36;
+
+  --highlight-inner: #FFFF11;
+  --highlight-outer: #4B0084;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6);
+}
