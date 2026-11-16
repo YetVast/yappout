@@ -10,8 +10,9 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const provider = url.searchParams.get('provider') ?? undefined;
+    const returnTo = url.searchParams.get('returnTo') ?? undefined;
 
-    const { authorizeUrl, txCookieHeader } = initiateLogin(provider);
+    const { authorizeUrl, txCookieHeader } = initiateLogin({ provider, returnTo });
 
     const response = NextResponse.redirect(authorizeUrl, { status: 302 });
     response.headers.append('Set-Cookie', txCookieHeader);

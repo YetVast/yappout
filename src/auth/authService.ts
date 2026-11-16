@@ -1,7 +1,7 @@
 // src/auth/authService.ts
 // High-level OAuth Authorization Code flow with PKCE S256 for YappOut
 
-import { AuthError, toPublicAuthError } from '@yetvast/auth';
+import { AuthError, isSafeRedirectUri, toPublicAuthError, type AuthErrorCode } from '@yetvast/auth';
 import {
   assertServerRuntime,
   createAppAuthorizeRedirect,
@@ -20,11 +20,17 @@ import type { YappoutUser } from './types';
 
 assertServerRuntime();
 
+export interface InitiateLoginInput {
+  provider?: string;
+  returnTo?: string;
+}
+
 export interface InitiateLoginResult {
   authorizeUrl: string;
   state: string;
   codeVerifier: string;
   txCookieHeader: string;
+  returnTo?: string;
 }
 
 export interface HandleCallbackInput {
@@ -42,13 +48,97 @@ export interface HandleCallbackResult {
   user: YappoutUser;
   sessionCookieHeader: string;
   clearTxCookieHeader: string;
+  returnTo?: string;
+}
+
+/**
+ * Normalizes central Yet Vast Auth error codes into typed, secure, user-friendly messages.
+ */
+export function normalizeCentralAuthError(
+  rawError: string,
+  rawDesc?: string | null
+): { code: AuthErrorCode; message: string; safeMessage: string } {
+  const normalized = rawError.trim().toUpperCase().replace(/-/g, '_');
+
+  switch (normalized) {
+    case 'APPLICATION_NOT_REGISTERED':
+      return {
+        code: 'APPLICATION_NOT_REGISTERED',
+        message: rawDesc ?? 'YappOut is not registered in the central application registry.',
+        safeMessage:
+          rawDesc ?? 'YappOut is not registered in the central Yet Vast Auth application registry.',
+      };
+    case 'APPLICATION_PENDING':
+    case 'APPLICATION_PENDING_APPROVAL':
+      return {
+        code: 'APPLICATION_PENDING_APPROVAL',
+        message: rawDesc ?? 'YappOut application registration is pending review by central administrators.',
+        safeMessage:
+          rawDesc ?? 'YappOut registration is currently pending review by central administrators.',
+      };
+    case 'APPLICATION_REJECTED':
+      return {
+        code: 'APPLICATION_REJECTED',
+        message: rawDesc ?? 'YappOut application registration was rejected by central administrators.',
+        safeMessage:
+          rawDesc ?? 'YappOut registration was rejected by central administrators.',
+      };
+    case 'APPLICATION_SUSPENDED':
+      return {
+        code: 'APPLICATION_SUSPENDED',
+        message: rawDesc ?? 'YappOut application authentication has been suspended by central administrators.',
+        safeMessage:
+          rawDesc ?? 'Authentication for YappOut has been temporarily suspended by central administrators.',
+      };
+    case 'INVALID_REDIRECT_URI':
+    case 'REDIRECT_URI_MISMATCH':
+      return {
+        code: 'INVALID_REDIRECT_URI',
+        message: rawDesc ?? 'The requested callback URL does not match central YappOut registration.',
+        safeMessage:
+          rawDesc ?? 'The callback URL does not match central registration.',
+      };
+    case 'PROVIDER_NOT_ALLOWED':
+    case 'PROVIDER_DISABLED':
+      return {
+        code: 'PROVIDER_DISABLED',
+        message: rawDesc ?? 'The requested sign-in provider is not enabled.',
+        safeMessage: 'The requested sign-in provider is not enabled.',
+      };
+    case 'ACCESS_DENIED':
+      return {
+        code: 'FORBIDDEN',
+        message: rawDesc ?? 'Sign-in was cancelled or declined at central authority.',
+        safeMessage: rawDesc ?? 'Sign-in was cancelled or declined at central authority.',
+      };
+    case 'UNAUTHORIZED_CLIENT':
+      return {
+        code: 'UNAUTHORIZED',
+        message: rawDesc ?? 'YappOut client is not authorized for this action.',
+        safeMessage: 'Client application is not authorized.',
+      };
+    default:
+      return {
+        code: 'PROVIDER_PROTOCOL_ERROR',
+        message: rawDesc ?? rawError,
+        safeMessage: rawDesc ?? 'Authentication failed at central authority.',
+      };
+  }
 }
 
 /**
  * Initiates the OAuth PKCE authorization code flow against Yet Vast Auth.
  */
-export function initiateLogin(provider?: string): InitiateLoginResult {
+export function initiateLogin(options?: string | InitiateLoginInput): InitiateLoginResult {
   const env = getYappoutAuthConfig();
+  const provider = typeof options === 'string' ? options : options?.provider;
+  const rawReturnTo = typeof options === 'object' ? options?.returnTo : undefined;
+
+  const returnTo =
+    rawReturnTo && isSafeRedirectUri(rawReturnTo, { fallbackOrigin: env.appOrigin })
+      ? rawReturnTo
+      : undefined;
+
   const redirectUri = `${env.appOrigin}/api/auth/callback`;
 
   const auth = createAppAuthorizeRedirect({
@@ -61,6 +151,7 @@ export function initiateLogin(provider?: string): InitiateLoginResult {
   const txCookieHeader = createTxCookieHeader({
     state: auth.state,
     codeVerifier: auth.codeVerifier,
+    ...(returnTo ? { returnTo } : {}),
   });
 
   return {
@@ -68,6 +159,7 @@ export function initiateLogin(provider?: string): InitiateLoginResult {
     state: auth.state,
     codeVerifier: auth.codeVerifier,
     txCookieHeader,
+    ...(returnTo ? { returnTo } : {}),
   };
 }
 
@@ -80,10 +172,11 @@ export async function handleCallback(input: HandleCallbackInput): Promise<Handle
   const env = getYappoutAuthConfig();
 
   if (input.error) {
+    const normalized = normalizeCentralAuthError(input.error, input.errorDesc);
     throw new AuthError({
-      code: 'PROVIDER_PROTOCOL_ERROR',
-      message: input.errorDesc ?? input.error,
-      safeMessage: input.errorDesc ?? 'Authentication failed at central authority.',
+      code: normalized.code,
+      message: normalized.message,
+      safeMessage: normalized.safeMessage,
     });
   }
 
@@ -95,7 +188,7 @@ export async function handleCallback(input: HandleCallbackInput): Promise<Handle
     });
   }
 
-  let parsedTx: { state?: string; codeVerifier?: string };
+  let parsedTx: { state?: string; codeVerifier?: string; returnTo?: string };
   try {
     parsedTx = JSON.parse(input.rawTxCookie);
   } catch {
@@ -131,6 +224,11 @@ export async function handleCallback(input: HandleCallbackInput): Promise<Handle
     ...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {}),
   });
 
+  const returnTo =
+    parsedTx.returnTo && isSafeRedirectUri(parsedTx.returnTo, { fallbackOrigin: env.appOrigin })
+      ? parsedTx.returnTo
+      : undefined;
+
   const user = assertionToYappoutUser(assertion);
   const sessionCookieHeader = createSessionCookieHeader(assertionToken, assertion.exp);
   const clearTxCookieHeader = createClearTxCookieHeader();
@@ -140,6 +238,7 @@ export async function handleCallback(input: HandleCallbackInput): Promise<Handle
     user,
     sessionCookieHeader,
     clearTxCookieHeader,
+    ...(returnTo ? { returnTo } : {}),
   };
 }
 

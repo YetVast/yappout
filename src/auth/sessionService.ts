@@ -108,9 +108,13 @@ export function createClearSessionCookieHeader(): string {
 }
 
 /**
- * Creates the short-lived host-bound Set-Cookie header for PKCE state and verifier.
+ * Creates the short-lived host-bound Set-Cookie header for PKCE state, verifier, and returnTo.
  */
-export function createTxCookieHeader(payload: { state: string; codeVerifier: string }): string {
+export function createTxCookieHeader(payload: {
+  state: string;
+  codeVerifier: string;
+  returnTo?: string;
+}): string {
   const env = getYappoutAuthConfig();
   return buildSessionCookieHeader({
     name: YAPPOUT_TX_COOKIE,

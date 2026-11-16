@@ -201,7 +201,7 @@ Run quality verification commands:
 # Clean dependency installation using .npmrc and NODE_AUTH_TOKEN
 npm ci
 
-# Automated Test Suite (71 tests across 14 suites)
+# Automated Test Suite (98 tests across 16 suites)
 npm test
 
 # TypeScript Static Typecheck
@@ -219,8 +219,17 @@ npm run build
 ## 8. Deployment Verification Procedure
 
 Before releasing to production or staging on Vercel:
-1. **Local Clean Installation:** Run `npm ci` locally with `NODE_AUTH_TOKEN` exported to verify lockfile integrity.
-2. **Quality Gate Execution:** Run `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build`. All must pass with zero errors.
-3. **Vercel Build Verification:** Ensure `NODE_AUTH_TOKEN` is configured in Vercel project settings prior to triggering the build.
-4. **V0 Invariant Check:** Load the deployed site anonymously at `/` without signing in. Confirm Markdown loading, Web Speech narration, seek gestures, speed cycling, and highlight modes function with zero friction.
-5. **V1 Auth Verification:** Click `Sign in` to verify PKCE redirect to `https://auth.yetvast.com`, callback exchange, profile avatar display, and clean sign-out.
+1. **Isolated Authentication Test:** Verify token authentication in complete isolation (ignoring developer `~/.npmrc`):
+   ```bash
+   # Windows cmd
+   set NODE_AUTH_TOKEN=ghp_...
+   npm view @yetvast/auth@0.2.0 version --userconfig nul --registry=https://npm.pkg.github.com
+
+   # Linux / macOS / Vercel bash
+   NODE_AUTH_TOKEN=ghp_... npm view @yetvast/auth@0.2.0 version --userconfig /dev/null --registry=https://npm.pkg.github.com
+   ```
+2. **Local Clean Installation:** Run `npm ci` locally with `NODE_AUTH_TOKEN` exported to verify lockfile integrity.
+3. **Quality Gate Execution:** Run `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build`. All must pass with zero errors.
+4. **Vercel Build Verification:** Ensure `NODE_AUTH_TOKEN` is configured in Vercel project settings (Production, Preview, Development; Sensitive) prior to triggering the build.
+5. **V0 Invariant Check:** Load the deployed site anonymously at `/` without signing in. Confirm Markdown loading, Web Speech narration, seek gestures, speed cycling, and highlight modes function with zero friction.
+6. **V1 Auth Verification:** Click `Sign in` to verify PKCE redirect to `https://auth.yetvast.com`, callback exchange, profile avatar display, and clean sign-out.

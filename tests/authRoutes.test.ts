@@ -41,6 +41,16 @@ describe('YappOut Auth API Routes', () => {
       const setCookie = response.headers.get('set-cookie');
       expect(setCookie).toContain('yv_yappout_tx=');
     });
+
+    it('preserves safe returnTo in transaction cookie and omits invalid redirect target', async () => {
+      const request = new Request('http://localhost:3000/api/auth/login?returnTo=%2Freading');
+      const response = await loginHandler(request);
+
+      expect(response.status).toBe(302);
+      const setCookie = response.headers.get('set-cookie');
+      expect(setCookie).toContain('yv_yappout_tx=');
+      expect(decodeURIComponent(setCookie!)).toContain('"returnTo":"/reading"');
+    });
   });
 
   describe('GET /api/auth/session', () => {
@@ -119,6 +129,18 @@ describe('YappOut Auth API Routes', () => {
       expect(response.status).toBe(302);
       const location = response.headers.get('location');
       expect(location).toContain('auth_error=Cancelled');
+    });
+
+    it('handles central auth registration error codes with clear user-friendly messages', async () => {
+      const request = new Request('http://localhost:3000/api/auth/callback?error=application_not_registered');
+      const response = await callbackHandler(request);
+
+      expect(response.status).toBe(302);
+      const location = response.headers.get('location');
+      expect(location).toContain('auth_error=');
+      const decoded = decodeURIComponent(location!.replace(/\+/g, ' '));
+      expect(decoded).toContain('YappOut is not registered');
+      expect(location).toContain('auth_error_code=APPLICATION_NOT_REGISTERED');
     });
   });
 });

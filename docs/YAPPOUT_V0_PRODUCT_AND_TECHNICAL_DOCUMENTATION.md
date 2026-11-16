@@ -974,16 +974,19 @@ YappOut's local session and identity service cleanly consume whichever assertion
 ## 41. Authentication Flow & Security Boundaries
 
 1. **OAuth 2.0 Authorization Code Flow with PKCE S256:**
-   - Initiation via `/api/auth/login?provider=...`.
+   - Initiation via `/api/auth/login?provider=...&returnTo=...`.
+   - Validates and sanitizes `returnTo` via `isSafeRedirectUri()` to prevent open-redirect vulnerabilities.
    - Generates high-entropy `state` (24 bytes) and `code_verifier` (32 bytes).
    - Computes Base64URL-encoded SHA-256 challenge (`code_challenge`).
-   - Stores `state` and `codeVerifier` in a short-lived host-bound `yv_yappout_tx` cookie (`Max-Age=600`, `HttpOnly`, `SameSite=Lax`).
-   - Redirects user to `https://auth.yetvast.com/authorize`.
+   - Stores `state`, `codeVerifier`, and optional `returnTo` in a short-lived host-bound `yv_yappout_tx` cookie (`Max-Age=600`, `HttpOnly`, `SameSite=Lax`).
+   - Redirects user directly to `https://auth.yetvast.com/authorize` for centralized single sign-on.
 2. **Callback Validation & Code Exchange:**
    - Handled at `/api/auth/callback`.
+   - Normalizes central authority error responses (`normalizeCentralAuthError`) mapping errors like `APPLICATION_NOT_REGISTERED`, `APPLICATION_PENDING_APPROVAL`, `APPLICATION_SUSPENDED`, `INVALID_REDIRECT_URI`, etc., into safe, user-friendly messages.
    - Validates `state` against `yv_yappout_tx` cookie using constant-time string comparison (`timingSafeEqualStrings`).
    - Performs server-to-server POST exchange to `https://auth.yetvast.com/api/token` with `code`, `code_verifier`, and `app_id`.
    - Receives signed identity assertion JWT.
+   - Redirects user to sanitized `returnTo` path (or `/` default).
 3. **Asymmetric JWKS Assertion Verification:**
    - Token verified against `https://auth.yetvast.com/.well-known/jwks.json` (`EdDSA` / `RS256` key resolution via header `kid`).
    - Validates `iss` (expected issuer), `aud` (expected `yappout` audience), expiration (`exp`), and claim integrity.
@@ -1007,15 +1010,33 @@ Centralized via `AuthProvider` React Context:
 
 ### 42.2 UI Components
 - `AuthButton`: Compact control in header actions.
-  - Anonymous: Renders subtle `Sign in` button with `LogIn` icon.
+  - Anonymous: Renders visible `Sign in` button with `LogIn` icon. Clicking directly initiates SSO with central Yet Vast Auth.
   - Authenticated: Renders avatar badge with user initial, display name, and identity badge (`Persistent` or `Ephemeral`).
-  - Expired: Renders subtle warning badge prompting reconnection.
+  - Expired: Renders subtle warning badge prompting reconnection with single-click sign-in.
 - `AccountMenu`: Dropdown menu presenting verified identity metadata (`Yet Vast ID`, `Authority`, `Account Type`, `Provider`) and `Sign out` action.
 - `AuthModal`: Explanatory dialog detailing Google (Persistent Yet Vast Identity) vs GitHub (Ephemeral Service Access) without forcing account creation.
 
 ---
 
-## 43. Environment Configuration
+## 43. Application Registration in Central Yet Vast Auth
+
+To enable live production SSO authentication, YappOut must be registered in the central Yet Vast Auth registry (`https://auth.yetvast.com`):
+
+| Parameter | Production Value | Development Value |
+|---|---|---|
+| **Application ID (`app_id`)** | `yappout` | `yappout` |
+| **Application Name** | `YappOut` | `YappOut` |
+| **Allowed Redirect URIs** | `https://yappout.yetvast.com/api/auth/callback` | `http://localhost:3000/api/auth/callback` |
+| **Primary URL** | `https://yappout.yetvast.com` | `http://localhost:3000` |
+| **Enabled Providers** | `["google"]` (or `["google", "github"]`) | `["google"]` / `["google", "github"]` |
+| **Client Type** | Public Client (OAuth 2.0 + PKCE S256) | Public Client |
+| **Registration Status** | `APPROVED` | `APPROVED` |
+
+*Administrative Action Required:* Central administrator must register and approve `yappout` at `https://auth.yetvast.com/admin` before live OAuth logins can proceed against the production authority. Until registered, the central authority responds with `APPLICATION_NOT_REGISTERED`, which YappOut gracefully normalizes and displays to the user.
+
+---
+
+## 44. Environment Configuration
 
 Documented in `.env.example`:
 - `YAPPOUT_ORIGIN`: Canonical application origin (default `http://localhost:3000`).
@@ -1064,21 +1085,21 @@ For the permanent, multi-application standard governing all YVS applications (Ye
 
 ---
 
-## 45. Verification Summary
+## 46. Verification Summary
 
 | Gate | Target | Result | Status |
 |---|---|---|---|
 | **Clean Dependency Installation** | `npm ci` via root `.npmrc` & `NODE_AUTH_TOKEN` | 574 packages installed cleanly | **VERIFIED** |
-| **Unit & Integration Tests** | 71 tests across 14 suites | 71/71 passing (100%) | **VERIFIED** |
-| **V0 Regression Coverage** | All 38 original V0 tests passing | 38/38 passing (100%) | **VERIFIED** |
-| **V1 Auth Test Coverage** | 33 dedicated authentication tests | 33/33 passing (100%) | **VERIFIED** |
+| **Unit & Integration Tests** | 98 tests across 16 suites | 98/98 passing (100%) | **VERIFIED** |
+| **V0 Core Mechanics Coverage** | Segmenting, seeking, speech adapter, scroll | 58/58 passing (100%) | **VERIFIED** |
+| **V1 Auth Test Coverage** | 40 dedicated authentication tests | 40/40 passing (100%) | **VERIFIED** |
 | **TypeScript Static Check** | `npm run typecheck` (`tsc --noEmit`) | 0 errors | **VERIFIED** |
 | **ESLint Analysis** | `npm run lint` (`eslint .`) | 0 errors, 0 warnings | **VERIFIED** |
 | **Production Build** | `npm run build` (Turbopack static + dynamic API) | Compiled successfully | **VERIFIED** |
 
 ---
 
-## 46. Deferred Work & V2 Opportunities
+## 47. Deferred Work & V2 Opportunities
 
 The following capabilities are intentionally excluded from V1 to preserve the client-side architectural baseline:
 - Firestore document storage and cloud document syncing.

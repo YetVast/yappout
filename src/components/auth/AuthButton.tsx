@@ -6,13 +6,11 @@ import React, { useState } from 'react';
 import { LogIn, AlertCircle, ChevronDown, Shield, GitBranch } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 import { AccountMenu } from './AccountMenu';
-import { AuthModal } from './AuthModal';
 import styles from './auth.module.css';
 
 export function AuthButton() {
   const { status, user, error, isLoading, signIn, signOut, clearError } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -72,20 +70,12 @@ export function AuthButton() {
         <button
           type="button"
           className={styles.sessionExpiredBtn}
-          onClick={() => setIsModalOpen(true)}
-          title="Session expired. Click to reconnect."
+          onClick={() => signIn()}
+          title="Session expired. Click to sign in again."
         >
           <AlertCircle size={14} />
-          <span>Session Expired</span>
+          <span>Session Expired — Sign in</span>
         </button>
-        <AuthModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSignIn={(provider) => {
-            setIsModalOpen(false);
-            signIn(provider);
-          }}
-        />
       </div>
     );
   }
@@ -94,7 +84,7 @@ export function AuthButton() {
   return (
     <div className={styles.authContainer}>
       {error && (
-        <div className={styles.errorBanner} style={{ position: 'absolute', right: 0, top: '100%', marginTop: '0.5rem', width: 260, zIndex: 150 }}>
+        <div className={styles.errorBanner} style={{ position: 'absolute', right: 0, top: '100%', marginTop: '0.5rem', width: 280, zIndex: 150 }}>
           <span>{error}</span>
           <button type="button" className={styles.dismissErrorBtn} onClick={clearError} aria-label="Dismiss error">
             &times;
@@ -104,22 +94,13 @@ export function AuthButton() {
       <button
         type="button"
         className={styles.signInBtn}
-        onClick={() => setIsModalOpen(true)}
-        aria-label="Sign in or connect Yet Vast account"
+        onClick={() => signIn()}
+        aria-label="Sign in with Yet Vast Auth"
         title="Sign in with Yet Vast Auth (optional)"
       >
         <LogIn size={14} />
         <span>Sign in</span>
       </button>
-
-      <AuthModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSignIn={(provider) => {
-          setIsModalOpen(false);
-          signIn(provider);
-        }}
-      />
     </div>
   );
 }

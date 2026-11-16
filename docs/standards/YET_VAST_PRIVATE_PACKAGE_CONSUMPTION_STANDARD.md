@@ -67,13 +67,24 @@ GitHub Packages requires explicit authentication for scoped downloads. The token
 
 *Organization Repository Access Note:* In GitHub Organization settings (`https://github.com/orgs/yetvast/packages`), verify that the consuming repository has been added under **Manage Actions access** with `Read` permission.
 
-### Step 4: Verify Package Publication & Version Availability
-Before updating `package.json`, verify that the desired package version is published and resolvable:
+### Step 4: Verify Package Publication & Isolated Authentication
+
+Before updating `package.json` or pushing to Vercel, verify that the desired package version is published and resolvable **independently of any developer-level `~/.npmrc` configuration**.
+
+#### Isolated Authentication Verification Command
+Developer workstations frequently have a global `~/.npmrc` containing an active GitHub token. This can mask authentication failures that will immediately crash in Vercel's clean container. To test authentication in complete isolation (matching Vercel's clean container environment), specify an empty userconfig:
 
 ```bash
-npm view @yetvast/auth versions
-npm view @yetvast/auth-ui versions
+# Windows Command Prompt / PowerShell
+set NODE_AUTH_TOKEN=ghp_yourValidClassicPAT...
+npm view @yetvast/auth@0.2.0 version --userconfig nul --registry=https://npm.pkg.github.com
+
+# Linux / macOS / CI Runner
+NODE_AUTH_TOKEN=ghp_yourValidClassicPAT... npm view @yetvast/auth@0.2.0 version --userconfig /dev/null --registry=https://npm.pkg.github.com
 ```
+
+- If `NODE_AUTH_TOKEN` is unset or invalid, npm will fail with `npm error code E401 / 401 Unauthorized - unauthenticated: User cannot be authenticated with the token provided.`
+- If `NODE_AUTH_TOKEN` is valid and possesses `read:packages` + `repo`, npm will return the exact version (e.g. `0.2.0`).
 
 Ensure the version declared in `package.json` matches a published artifact (e.g. `^0.2.0`).
 
@@ -122,6 +133,14 @@ When a consumer project containing `@yetvast/auth` is pushed to Vercel without a
 
 ### Permanent Resolution
 Committing the standardized root `.npmrc` referencing `${NODE_AUTH_TOKEN}`, coupled with configuring `NODE_AUTH_TOKEN` in Vercel Project Settings, completely resolves the issue across all builds, preview branches, and production deployments.
+
+### Variable Name Invariant: Why `NODE_AUTH_TOKEN` is the Canonical Standard
+
+The ecosystem must strictly standardize on **`NODE_AUTH_TOKEN`** across all repositories:
+
+1. **Adherence to Upstream Authority:** `yetvast-auth/docs/PRODUCTION_DEPLOYMENT.md` canonically defines `NODE_AUTH_TOKEN`.
+2. **Industry Standard Compatibility:** `NODE_AUTH_TOKEN` is the built-in standard recognized natively by official npm documentation, GitHub Actions (`actions/setup-node`), and Vercel's private registry guides.
+3. **Preventing Divergence Failures:** Project-specific divergences (such as Yet Vast Home's historical use of `${NPM_TOKEN}`) cause silent build failures: if an operator configures `NPM_TOKEN` in Vercel, YappOut evaluates `${NODE_AUTH_TOKEN}` as empty and crashes with HTTP 401; conversely, configuring `NODE_AUTH_TOKEN` causes projects expecting `${NPM_TOKEN}` to fail. All YVS consumer repositories must converge on `NODE_AUTH_TOKEN`.
 
 ---
 

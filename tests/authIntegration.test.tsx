@@ -271,4 +271,148 @@ describe('YappOut Auth UI Integration & Invariants', () => {
     expect(capturedAuth!.status).toBe('ANONYMOUS');
     expect(capturedAuth!.user).toBeNull();
   });
+
+  it('clicking Sign in button invokes window.location.assign to /api/auth/login', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        authenticated: false,
+        status: 'ANONYMOUS',
+        user: null,
+      }),
+    } as unknown as Response);
+
+    const assignMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: {
+        assign: assignMock,
+        pathname: '/',
+        search: '',
+        hash: '',
+        origin: 'http://localhost:3000',
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    await act(async () => {
+      root.render(
+        <AuthProvider>
+          <AuthButton />
+        </AuthProvider>
+      );
+    });
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+
+    const signInBtn = container.querySelector('button');
+    expect(signInBtn?.textContent).toContain('Sign in');
+
+    act(() => {
+      signInBtn?.click();
+    });
+
+    expect(assignMock).toHaveBeenCalledWith('/api/auth/login');
+  });
+
+  it('renders session expired button and clicking it initiates sign-in reconnection', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        authenticated: false,
+        status: 'SESSION_EXPIRED',
+        user: null,
+      }),
+    } as unknown as Response);
+
+    const assignMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: {
+        assign: assignMock,
+        pathname: '/',
+        search: '',
+        hash: '',
+        origin: 'http://localhost:3000',
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    await act(async () => {
+      root.render(
+        <AuthProvider>
+          <AuthButton />
+        </AuthProvider>
+      );
+    });
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+
+    const expiredBtn = container.querySelector('button');
+    expect(expiredBtn?.textContent).toContain('Session Expired');
+
+    act(() => {
+      expiredBtn?.click();
+    });
+
+    expect(assignMock).toHaveBeenCalledWith('/api/auth/login');
+  });
+
+  it('refreshSession preserves and updates authenticated user state', async () => {
+    let capturedAuth: AuthContextValue | null = null;
+    function TestConsumer() {
+      capturedAuth = useAuth();
+      return <div>Status: {capturedAuth.status}</div>;
+    }
+
+    const mockUser: YappoutUser = {
+      id: 'yv_refresh_user',
+      displayName: 'Refresh User',
+      email: 'refresh@yetvast.com',
+      authKind: 'persistent',
+      provider: 'google',
+      yvUserId: 'yv_refresh_user',
+      isPersistent: true,
+      authenticatedAt: new Date().toISOString(),
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+    };
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        authenticated: true,
+        status: 'AUTHENTICATED',
+        user: mockUser,
+      }),
+    } as unknown as Response);
+
+    await act(async () => {
+      root.render(
+        <AuthProvider>
+          <TestConsumer />
+        </AuthProvider>
+      );
+    });
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+
+    expect(capturedAuth!.status).toBe('AUTHENTICATED');
+    expect(capturedAuth!.user?.displayName).toBe('Refresh User');
+
+    // Trigger explicit session refresh
+    await act(async () => {
+      await capturedAuth!.refreshSession();
+    });
+
+    expect(capturedAuth!.status).toBe('AUTHENTICATED');
+    expect(capturedAuth!.user?.yvUserId).toBe('yv_refresh_user');
+  });
 });

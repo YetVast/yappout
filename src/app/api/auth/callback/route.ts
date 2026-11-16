@@ -2,6 +2,7 @@
 // Handles OAuth callback, state verification, code exchange, and session establishment
 
 import { NextResponse } from 'next/server';
+import { isSafeRedirectUri } from '@yetvast/auth';
 import { parseCookieHeader } from '@yetvast/auth/server';
 import { handleCallback, toPublicAuthError } from '@/auth/authService';
 import { getYappoutAuthConfig, YAPPOUT_TX_COOKIE } from '@/auth/config';
@@ -39,7 +40,12 @@ export async function GET(request: Request) {
       errorDesc,
     });
 
-    const response = NextResponse.redirect(`${appOrigin}/`, { status: 302 });
+    const destination =
+      result.returnTo && isSafeRedirectUri(result.returnTo, { fallbackOrigin: appOrigin })
+        ? new URL(result.returnTo, appOrigin).toString()
+        : `${appOrigin}/`;
+
+    const response = NextResponse.redirect(destination, { status: 302 });
     response.headers.append('Set-Cookie', result.clearTxCookieHeader);
     response.headers.append('Set-Cookie', result.sessionCookieHeader);
     return response;
@@ -47,6 +53,7 @@ export async function GET(request: Request) {
     const publicError = toPublicAuthError(err);
     const errorUrl = new URL('/', appOrigin);
     errorUrl.searchParams.set('auth_error', publicError.message);
+    errorUrl.searchParams.set('auth_error_code', publicError.code);
 
     const response = NextResponse.redirect(errorUrl.toString(), { status: 302 });
     try {
