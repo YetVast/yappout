@@ -8,6 +8,7 @@ export const YAPPOUT_SESSION_COOKIE = 'yv_yappout_session';
 export const YAPPOUT_TX_COOKIE = 'yv_yappout_tx';
 export const YAPPOUT_DEFAULT_APP_ID = 'yappout';
 export const DEFAULT_AUTH_SERVER_ORIGIN = 'https://auth.yetvast.com';
+export const YAPPOUT_CANONICAL_ORIGIN = 'https://yappout.yetvast.com';
 
 export interface YappoutAuthConfig {
   appOrigin: string;
@@ -60,7 +61,7 @@ export function getYappoutAuthConfig(): YappoutAuthConfig {
   const isTestMode = process.env.YETVAST_ALLOW_TEST_MODE === '1';
   const allowDevDefaults = isTestMode || process.env.NODE_ENV !== 'production';
 
-  const rawAppOrigin =
+  let rawAppOrigin =
     process.env.YAPPOUT_ORIGIN?.trim() ||
     (allowDevDefaults ? 'http://localhost:3000' : '');
 
@@ -71,6 +72,17 @@ export function getYappoutAuthConfig(): YappoutAuthConfig {
       safeMessage: 'Application origin is not configured.',
     });
   }
+
+  // Canonicalize Vercel default/preview deployment domains to registered production domain.
+  // Yet Vast Auth application registration strictly validates redirect URIs against https://yappout.yetvast.com.
+  if (
+    !isTestMode &&
+    process.env.NODE_ENV === 'production' &&
+    (rawAppOrigin.includes('.vercel.app') || rawAppOrigin === 'https://yappout.vercel.app')
+  ) {
+    rawAppOrigin = YAPPOUT_CANONICAL_ORIGIN;
+  }
+
   const appOrigin = normalizeOrigin(rawAppOrigin, 'YAPPOUT_ORIGIN');
 
   const rawAuthOrigin =

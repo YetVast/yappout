@@ -12,7 +12,18 @@ export async function GET(request: Request) {
     const provider = url.searchParams.get('provider') ?? undefined;
     const returnTo = url.searchParams.get('returnTo') ?? undefined;
 
-    const { authorizeUrl, txCookieHeader } = initiateLogin({ provider, returnTo });
+    const host =
+      request.headers.get('x-forwarded-host') ||
+      request.headers.get('host') ||
+      url.host;
+    const isProdHost = host.includes('yetvast.com');
+    const customAppOrigin = isProdHost ? 'https://yappout.yetvast.com' : undefined;
+
+    const { authorizeUrl, txCookieHeader } = initiateLogin({
+      provider,
+      returnTo,
+      ...(customAppOrigin ? { appOrigin: customAppOrigin } : {}),
+    });
 
     const response = NextResponse.redirect(authorizeUrl, { status: 302 });
     response.headers.append('Set-Cookie', txCookieHeader);

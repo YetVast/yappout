@@ -23,6 +23,7 @@ assertServerRuntime();
 export interface InitiateLoginInput {
   provider?: string;
   returnTo?: string;
+  appOrigin?: string;
 }
 
 export interface InitiateLoginResult {
@@ -41,6 +42,7 @@ export interface HandleCallbackInput {
   errorDesc?: string | null;
   fetchImpl?: typeof fetch;
   jwks?: JwksDocument;
+  appOrigin?: string;
 }
 
 export interface HandleCallbackResult {
@@ -133,13 +135,15 @@ export function initiateLogin(options?: string | InitiateLoginInput): InitiateLo
   const env = getYappoutAuthConfig();
   const provider = typeof options === 'string' ? options : options?.provider;
   const rawReturnTo = typeof options === 'object' ? options?.returnTo : undefined;
+  const effectiveAppOrigin =
+    (typeof options === 'object' && options?.appOrigin) || env.appOrigin;
 
   const returnTo =
-    rawReturnTo && isSafeRedirectUri(rawReturnTo, { fallbackOrigin: env.appOrigin })
+    rawReturnTo && isSafeRedirectUri(rawReturnTo, { fallbackOrigin: effectiveAppOrigin })
       ? rawReturnTo
       : undefined;
 
-  const redirectUri = `${env.appOrigin}/api/auth/callback`;
+  const redirectUri = `${effectiveAppOrigin}/api/auth/callback`;
 
   const auth = createAppAuthorizeRedirect({
     authServerOrigin: env.authServerOrigin,
@@ -211,11 +215,13 @@ export async function handleCallback(input: HandleCallbackInput): Promise<Handle
     });
   }
 
+  const effectiveAppOrigin = input.appOrigin || env.appOrigin;
+
   const { assertionToken, assertion } = await exchangeCodeForAssertion({
     authServerOrigin: env.authServerOrigin,
     applicationId: env.applicationId,
     code: input.code,
-    redirectUri: `${env.appOrigin}/api/auth/callback`,
+    redirectUri: `${effectiveAppOrigin}/api/auth/callback`,
     codeVerifier: parsedTx.codeVerifier,
     ...(env.clientSecret ? { clientSecret: env.clientSecret } : {}),
     ...(input.jwks ? { jwks: input.jwks } : { jwksUrl: env.jwksUrl }),
@@ -225,7 +231,7 @@ export async function handleCallback(input: HandleCallbackInput): Promise<Handle
   });
 
   const returnTo =
-    parsedTx.returnTo && isSafeRedirectUri(parsedTx.returnTo, { fallbackOrigin: env.appOrigin })
+    parsedTx.returnTo && isSafeRedirectUri(parsedTx.returnTo, { fallbackOrigin: effectiveAppOrigin })
       ? parsedTx.returnTo
       : undefined;
 

@@ -42,6 +42,18 @@ describe('YappOut Auth Service', () => {
     expect(result.txCookieHeader).toContain(encodeURIComponent(result.state));
   });
 
+  it('respects explicit custom appOrigin override in initiateLogin', () => {
+    const result = initiateLogin({
+      provider: 'github',
+      appOrigin: 'https://yappout.yetvast.com',
+    });
+
+    const url = new URL(result.authorizeUrl);
+    expect(url.searchParams.get('redirect_uri')).toBe(
+      'https://yappout.yetvast.com/api/auth/callback'
+    );
+  });
+
   it('rejects callback when central auth reports an error parameter', async () => {
     await expect(
       handleCallback({

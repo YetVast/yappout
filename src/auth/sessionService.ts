@@ -143,10 +143,24 @@ export function createClearTxCookieHeader(): string {
  */
 export function validateMutationOrigin(request: Request): void {
   const env = getYappoutAuthConfig();
+  let expectedOrigin = env.appOrigin;
+  try {
+    const url = new URL(request.url);
+    const host =
+      request.headers.get('x-forwarded-host') ||
+      request.headers.get('host') ||
+      url.host;
+    if (host.includes('yetvast.com')) {
+      expectedOrigin = 'https://yappout.yetvast.com';
+    }
+  } catch {
+    // fallback to env.appOrigin
+  }
+
   verifyCsrfAndOrigin({
     requestOriginHeader: request.headers.get('origin'),
     requestRefererHeader: request.headers.get('referer'),
-    expectedOrigin: env.appOrigin,
+    expectedOrigin,
     requireCsrfToken: false,
   });
 }

@@ -51,6 +51,27 @@ describe('YappOut Auth API Routes', () => {
       expect(setCookie).toContain('yv_yappout_tx=');
       expect(decodeURIComponent(setCookie!)).toContain('"returnTo":"/reading"');
     });
+
+    it('forces canonical yetvast.com redirect_uri when request host is on yetvast.com', async () => {
+      (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
+      process.env.YAPPOUT_ORIGIN = 'https://yappout.yetvast.com';
+      process.env.YETVAST_AUTH_ORIGIN = 'https://auth.yetvast.com';
+
+      const request = new Request('https://yappout.yetvast.com/api/auth/login', {
+        headers: {
+          host: 'yappout.yetvast.com',
+        },
+      });
+      const response = await loginHandler(request);
+
+      expect(response.status).toBe(302);
+      const location = response.headers.get('location');
+      expect(location).toBeTruthy();
+      const redirectUrl = new URL(location!);
+      expect(redirectUrl.searchParams.get('redirect_uri')).toBe(
+        'https://yappout.yetvast.com/api/auth/callback'
+      );
+    });
   });
 
   describe('GET /api/auth/session', () => {

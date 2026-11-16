@@ -3,7 +3,12 @@
 // Unit tests for YappOut authentication configuration validation
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { getYappoutAuthConfig, YAPPOUT_DEFAULT_APP_ID, DEFAULT_AUTH_SERVER_ORIGIN } from '@/auth/config';
+import {
+  getYappoutAuthConfig,
+  YAPPOUT_DEFAULT_APP_ID,
+  DEFAULT_AUTH_SERVER_ORIGIN,
+  YAPPOUT_CANONICAL_ORIGIN,
+} from '@/auth/config';
 
 describe('YappOut Auth Configuration', () => {
   const originalEnv = { ...process.env };
@@ -67,6 +72,17 @@ describe('YappOut Auth Configuration', () => {
     delete process.env.YETVAST_ALLOW_TEST_MODE;
 
     expect(() => getYappoutAuthConfig()).toThrowError(/YAPPOUT_ORIGIN is required in production/);
+  });
+
+  it('canonicalizes vercel.app domains to YAPPOUT_CANONICAL_ORIGIN in production', () => {
+    (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
+    delete process.env.YETVAST_ALLOW_TEST_MODE;
+    process.env.YAPPOUT_ORIGIN = 'https://yappout.vercel.app';
+    process.env.YETVAST_AUTH_ORIGIN = 'https://auth.yetvast.com';
+
+    const config = getYappoutAuthConfig();
+    expect(config.appOrigin).toBe(YAPPOUT_CANONICAL_ORIGIN);
+    expect(config.appOrigin).toBe('https://yappout.yetvast.com');
   });
 
   it('rejects insecure HTTP for non-localhost origins in production', () => {

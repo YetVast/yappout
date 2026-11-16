@@ -22,8 +22,16 @@ export async function GET(request: Request) {
     }
   }
 
+  const url = new URL(request.url);
+  const host =
+    request.headers.get('x-forwarded-host') ||
+    request.headers.get('host') ||
+    url.host;
+  if (host.includes('yetvast.com')) {
+    appOrigin = 'https://yappout.yetvast.com';
+  }
+
   try {
-    const url = new URL(request.url);
     const code = url.searchParams.get('code');
     const state = url.searchParams.get('state');
     const errorParam = url.searchParams.get('error');
@@ -38,6 +46,7 @@ export async function GET(request: Request) {
       rawTxCookie,
       error: errorParam,
       errorDesc,
+      appOrigin,
     });
 
     const destination =
