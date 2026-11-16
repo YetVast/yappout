@@ -4,6 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { Sun, Moon, Volume2 } from 'lucide-react';
+import { AuthButton } from '@/components/auth/AuthButton';
 import styles from './Header.module.css';
 
 interface HeaderProps {
@@ -74,6 +75,7 @@ export function Header({ onLoadSample }: HeaderProps) {
         </div>
 
         <div className={styles.actions}>
+          <AuthButton />
           <button
             type="button"
             className={styles.themeToggle}

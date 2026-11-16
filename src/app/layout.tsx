@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { AuthProvider } from '@/components/auth/AuthProvider';
 
 export const metadata: Metadata = {
   title: 'YappOut — Audio-first Synchronized Reader',
@@ -14,7 +15,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" data-theme="light">
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

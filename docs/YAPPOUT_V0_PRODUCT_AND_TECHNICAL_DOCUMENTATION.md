@@ -893,3 +893,159 @@ npm run build
 # Start local production server
 npm run start
 ```
+
+---
+
+# Part II: YappOut V1 — Optional Authentication & Central Yet Vast Auth Integration
+
+> **Extension ID:** YVS-YAPPOUT-V1-AUTH-001  
+> **Release:** V1 Optional Authentication Baseline  
+> **Date:** November 16, 2026  
+> **Core Principle:** Authentication must enhance YappOut, never become a prerequisite for using it.
+
+---
+
+## 39. V1 Executive Summary & Architectural Separation
+
+YappOut V1 introduces an optional identity and authentication layer connecting YappOut to the central Yet Vast Auth authority (`https://auth.yetvast.com`). 
+
+V0 is preserved unconditionally as the foundational reading engine:
+1. **Zero Registration Barrier:** Anonymous visitors retain full access to content editing, sample loading, playback, speed adjustment, highlight mode cycling, and spatial double-click/double-tap seeking.
+2. **Local Privacy Invariant:** Anonymous content and speech synthesis operations never transmit data to Yet Vast Auth or any remote server.
+3. **Application-Owned Sessions:** YappOut consumes central Auth identity assertions via OAuth 2.0 PKCE, but owns its local session lifecycle host-bound to its origin.
+
+```text
+                 YappOut V1
+                     |
+             Authentication Layer
+                     |
+             Is authentication needed?
+                 /        \
+               NO          YES
+               |            |
+          Anonymous      Yet Vast Auth
+           Session            |
+                          OAuth + PKCE (S256)
+                              |
+                       Provider Policy
+                         /        \
+                     GitHub      Google
+                       |           |
+                   Ephemeral    Persistent
+                   Service YV   Identity (yvUserId)
+                       \           /
+                        Auth Assertion (JWT)
+                              |
+                     Asymmetric JWKS Verify
+                              |
+                       YappOut Backend
+                              |
+                     YappOut Local Session (Host-bound Cookie)
+```
+
+---
+
+## 40. Pre-Implementation Investigation: Central Provider Policy Analysis
+
+Yet Vast Auth defines two mutually exclusive application policies in its registry schema (`packages/auth/src/applications/schema.ts`):
+
+- **Policy A — Anonymous GitHub-only Service Access:**
+  - `allowEphemeralGithub = true`
+  - `requirePersistentIdentity = false`
+  - Enabled providers: `['github']` (or `['github', 'google']`)
+  - Semantics: Does not automatically create or persist a Yet Vast identity (`yvUserId = null`, `authKind = "ephemeral_github"`, `sub = "ephemeral:github:<id>"`).
+- **Policy B — Persistent Yet Vast Identity:**
+  - `requirePersistentIdentity = true`
+  - `allowEphemeralGithub = false`
+  - Enabled providers: `['google']` (or `['google', 'github']` when GitHub is linked)
+  - Semantics: Resolves or creates a persistent Yet Vast identity (`yvUserId`), stored centrally in Firestore. Unlinked GitHub sign-in is blocked with `PERSISTENT_IDENTITY_REQUIRED`.
+
+### Critical Finding on Coexistence
+Central Auth's schema validator `validateProviderPolicy` explicitly throws `CONFIGURATION_INVALID` if `allowEphemeralGithub && requirePersistentIdentity` are both true. A single registered application cannot enable both policies simultaneously in central Auth without schema modification.
+
+**YappOut V1 Consumer Resolution:**
+YappOut's local session and identity service cleanly consume whichever assertion type is returned by the registered application policy:
+- When a persistent assertion is returned, it projects into a persistent `YappoutUser` with `isPersistent = true` and `yvUserId`.
+- When an ephemeral assertion is returned, it projects into an ephemeral `YappoutUser` with `isPersistent = false`, `yvUserId = null`, and `ephemeralSubject`.
+- Anonymous users receive no session cookie and no fabricated identity.
+
+---
+
+## 41. Authentication Flow & Security Boundaries
+
+1. **OAuth 2.0 Authorization Code Flow with PKCE S256:**
+   - Initiation via `/api/auth/login?provider=...`.
+   - Generates high-entropy `state` (24 bytes) and `code_verifier` (32 bytes).
+   - Computes Base64URL-encoded SHA-256 challenge (`code_challenge`).
+   - Stores `state` and `codeVerifier` in a short-lived host-bound `yv_yappout_tx` cookie (`Max-Age=600`, `HttpOnly`, `SameSite=Lax`).
+   - Redirects user to `https://auth.yetvast.com/authorize`.
+2. **Callback Validation & Code Exchange:**
+   - Handled at `/api/auth/callback`.
+   - Validates `state` against `yv_yappout_tx` cookie using constant-time string comparison (`timingSafeEqualStrings`).
+   - Performs server-to-server POST exchange to `https://auth.yetvast.com/api/token` with `code`, `code_verifier`, and `app_id`.
+   - Receives signed identity assertion JWT.
+3. **Asymmetric JWKS Assertion Verification:**
+   - Token verified against `https://auth.yetvast.com/.well-known/jwks.json` (`EdDSA` / `RS256` key resolution via header `kid`).
+   - Validates `iss` (expected issuer), `aud` (expected `yappout` audience), expiration (`exp`), and claim integrity.
+4. **Host-Bound Session Cookie:**
+   - Session token stored in `yv_yappout_session` (`HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` in production).
+   - Strict host-bound invariant: `Domain` attribute is never set, preventing session leaks across wildcard `.yetvast.com` domains.
+5. **CSRF-Protected Mutation Endpoints:**
+   - Mutating routes (e.g. `POST /api/auth/logout`) enforce same-origin verification via `Origin` and `Referer` headers.
+
+---
+
+## 42. User Interface & State Management
+
+### 42.1 Authentication States
+Centralized via `AuthProvider` React Context:
+- `ANONYMOUS`: Default zero-barrier state.
+- `AUTHENTICATING`: In-flight OAuth initiation or callback processing.
+- `AUTHENTICATED`: Valid session assertion present; profile active.
+- `SESSION_EXPIRED`: Stale session token detected; re-authentication prompted.
+- `AUTH_ERROR`: Authentication error reported and displayed non-intrusively.
+
+### 42.2 UI Components
+- `AuthButton`: Compact control in header actions.
+  - Anonymous: Renders subtle `Sign in` button with `LogIn` icon.
+  - Authenticated: Renders avatar badge with user initial, display name, and identity badge (`Persistent` or `Ephemeral`).
+  - Expired: Renders subtle warning badge prompting reconnection.
+- `AccountMenu`: Dropdown menu presenting verified identity metadata (`Yet Vast ID`, `Authority`, `Account Type`, `Provider`) and `Sign out` action.
+- `AuthModal`: Explanatory dialog detailing Google (Persistent Yet Vast Identity) vs GitHub (Ephemeral Service Access) without forcing account creation.
+
+---
+
+## 43. Environment Configuration
+
+Documented in `.env.example`:
+- `YAPPOUT_ORIGIN`: Canonical application origin (default `http://localhost:3000`).
+- `YAPPOUT_APP_ID`: Application identifier in central registry (`yappout`).
+- `YETVAST_AUTH_ORIGIN`: Central authority origin (`https://auth.yetvast.com`).
+- `YETVAST_AUTH_ISSUER`: Expected JWT issuer (`https://auth.yetvast.com`).
+- `YETVAST_AUTH_JWKS_URL`: Asymmetric key publication URL (`https://auth.yetvast.com/.well-known/jwks.json`).
+- `YETVAST_ALLOW_TEST_MODE`: Test-only mock authorization flag (`0` in production).
+
+---
+
+## 44. Verification Summary
+
+| Gate | Target | Result | Status |
+|---|---|---|---|
+| **Unit & Integration Tests** | 71 tests across 14 suites | 71/71 passing (100%) | **VERIFIED** |
+| **V0 Regression Coverage** | All 38 original V0 tests passing | 38/38 passing (100%) | **VERIFIED** |
+| **V1 Auth Test Coverage** | 33 dedicated authentication tests | 33/33 passing (100%) | **VERIFIED** |
+| **TypeScript Static Check** | `npm run typecheck` (`tsc --noEmit`) | 0 errors | **VERIFIED** |
+| **ESLint Analysis** | `npm run lint` (`eslint .`) | 0 errors, 0 warnings | **VERIFIED** |
+| **Production Build** | `npm run build` (Turbopack static + dynamic API) | Compiled successfully | **VERIFIED** |
+
+---
+
+## 45. Deferred Work & V2 Opportunities
+
+The following capabilities are intentionally excluded from V1 to preserve the client-side architectural baseline:
+- Firestore document storage and cloud document syncing.
+- Cloud reading history and cross-device reading progress.
+- Cloud TTS integration (ElevenLabs, Google Cloud Text-to-Speech).
+- User reading libraries and saved bookmarks.
+- Multi-application single sign-on (SSO) session synchronization.
+
