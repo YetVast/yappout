@@ -1027,10 +1027,48 @@ Documented in `.env.example`:
 
 ---
 
-## 44. Verification Summary
+## 44. Private Package Installation and CI/CD Build Configuration
+
+YappOut consumes the private `@yetvast/auth` SDK published to the **GitHub Packages npm registry** (`npm.pkg.github.com`).
+
+### 44.1 Scoped Registry & Credential-Free Root `.npmrc`
+To enable automated package downloads in CI/CD and deployment environments without leaking credentials, YappOut maintains a root `.npmrc`:
+
+```ini
+@yetvast:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+```
+
+- **Credential-free design:** The file strictly references `${NODE_AUTH_TOKEN}`. Hardcoded personal access tokens are prohibited.
+- **Scope isolation:** Only `@yetvast`-scoped packages are fetched from `npm.pkg.github.com`; standard public packages continue resolving through `registry.npmjs.org`.
+
+### 44.2 Critical Boundary: Package Installation vs Application User Authentication
+It is a mandatory YVS architectural rule that build-time package installation authentication must never be confused with or described as application user runtime authentication:
+
+1. **Package Installation Authentication (`NODE_AUTH_TOKEN`):**
+   - **Purpose:** Authorizes `npm ci` / `npm install` in Vercel or CI to download private `@yetvast/*` dependencies.
+   - **Mechanism:** GitHub Classic Personal Access Token with `read:packages` (and `repo` for private source repositories).
+   - **Scope:** Build environment only. Completely hidden from and irrelevant to end-users.
+2. **Application User Runtime Authentication (Yet Vast Auth):**
+   - **Purpose:** Authorizes end-users to optionally link persistent (Google) or ephemeral (GitHub) identities to YappOut.
+   - **Mechanism:** OAuth 2.0 PKCE Authorization Code flow, JWKS-signed assertion verification, host-bound cookies.
+   - **Scope:** Runtime browser-to-server. Completely optional; anonymous users have full V0 access with zero authentication.
+
+### 44.3 Vercel Environment Configuration
+For successful builds on Vercel:
+1. In Vercel Project Settings → **Environment Variables**, configure `NODE_AUTH_TOKEN`.
+2. Assign a GitHub Classic PAT with `read:packages` and `repo` scopes.
+3. Apply to **Production**, **Preview**, and **Development** environments. Mark as **Sensitive**.
+
+For the permanent, multi-application standard governing all YVS applications (Yet Vast Home, YappOut, Cogmit, Fyuniverse, VastComm), see [Yet Vast Permanent Engineering Standard: Private Package Consumption (YVS-STD-2026-PKG-001)](file:///c:/Users/yviyv/yvscodes/YetVastSolutions/yappout/docs/standards/YET_VAST_PRIVATE_PACKAGE_CONSUMPTION_STANDARD.md).
+
+---
+
+## 45. Verification Summary
 
 | Gate | Target | Result | Status |
 |---|---|---|---|
+| **Clean Dependency Installation** | `npm ci` via root `.npmrc` & `NODE_AUTH_TOKEN` | 574 packages installed cleanly | **VERIFIED** |
 | **Unit & Integration Tests** | 71 tests across 14 suites | 71/71 passing (100%) | **VERIFIED** |
 | **V0 Regression Coverage** | All 38 original V0 tests passing | 38/38 passing (100%) | **VERIFIED** |
 | **V1 Auth Test Coverage** | 33 dedicated authentication tests | 33/33 passing (100%) | **VERIFIED** |
@@ -1040,7 +1078,7 @@ Documented in `.env.example`:
 
 ---
 
-## 45. Deferred Work & V2 Opportunities
+## 46. Deferred Work & V2 Opportunities
 
 The following capabilities are intentionally excluded from V1 to preserve the client-side architectural baseline:
 - Firestore document storage and cloud document syncing.

@@ -146,11 +146,61 @@ src/
 
 ---
 
-## 6. Verification & Quality Gates
+## 6. Private Package Installation & CI/CD Deployment Setup
+
+YappOut depends on `@yetvast/auth@^0.2.0`, which is distributed via the private **GitHub Packages npm registry** (`npm.pkg.github.com`).
+
+### 6.1 Critical Distinction: Package Authentication vs User Runtime Authentication
+
+It is vital to maintain strict separation between the two authentication systems:
+
+| Dimension | Package Installation Authentication | Application User Runtime Authentication |
+|---|---|---|
+| **What it authenticates** | The build environment (`npm ci` / `npm install`) downloading private packages. | End-users signing in optionally to access profile features. |
+| **Credential used** | GitHub Classic Personal Access Token (`NODE_AUTH_TOKEN`). | OAuth 2.0 PKCE Authorization Code flow, JWKS-signed assertions, session cookies. |
+| **Where it runs** | Build time only (Vercel Build Environment, local CLI, CI/CD). | Runtime only (browser, Next.js server route handlers). |
+| **User requirement** | **None.** End users never see or need this token. | **Optional.** YappOut remains 100% functional for anonymous users without sign-in. |
+
+> [!IMPORTANT]
+> **Npm package authentication is strictly a build-time dependency download authorization. It is never application user authentication.**
+> 
+> - **V0 Engine:** 100% anonymous, client-side reading application requiring no login, no accounts, and no backend.
+> - **V1 Layer:** Optional identity integration with central Yet Vast Auth (`https://auth.yetvast.com`), recognizing persistent (Google) or ephemeral (GitHub) identities without making login mandatory.
+
+### 6.2 Root `.npmrc` Specification
+The repository root contains a credential-free `.npmrc`:
+
+```ini
+@yetvast:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+```
+
+- **Credential-free:** Uses the `${NODE_AUTH_TOKEN}` environment variable. Personal access tokens are never committed.
+- **Scoped registry:** Only `@yetvast` packages route to GitHub Packages. All public dependencies route to `registry.npmjs.org`.
+
+### 6.3 Vercel Deployment Configuration
+
+When deploying YappOut on Vercel:
+1. In the Vercel project dashboard, navigate to **Settings** → **Environment Variables**.
+2. Add an environment variable named **`NODE_AUTH_TOKEN`**.
+3. Supply a GitHub Classic Personal Access Token with the following permissions:
+   - `read:packages` — Required to download `@yetvast/*` packages from `npm.pkg.github.com`.
+   - `repo` — Required if the source repository (`yetvast/yetvast-auth`) is private.
+4. Set scope to **Production, Preview, and Development**. Mark the value as **Sensitive**.
+5. Save the variable and trigger a redeployment.
+
+For the canonical multi-application specification, see [Yet Vast Permanent Engineering Standard: Private Package Consumption (YVS-STD-2026-PKG-001)](file:///c:/Users/yviyv/yvscodes/YetVastSolutions/yappout/docs/standards/YET_VAST_PRIVATE_PACKAGE_CONSUMPTION_STANDARD.md).
+
+---
+
+## 7. Verification & Quality Gates
 
 Run quality verification commands:
 
 ```bash
+# Clean dependency installation using .npmrc and NODE_AUTH_TOKEN
+npm ci
+
 # Automated Test Suite (71 tests across 14 suites)
 npm test
 
@@ -163,3 +213,14 @@ npm run lint
 # Production Next.js Turbopack Build
 npm run build
 ```
+
+---
+
+## 8. Deployment Verification Procedure
+
+Before releasing to production or staging on Vercel:
+1. **Local Clean Installation:** Run `npm ci` locally with `NODE_AUTH_TOKEN` exported to verify lockfile integrity.
+2. **Quality Gate Execution:** Run `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build`. All must pass with zero errors.
+3. **Vercel Build Verification:** Ensure `NODE_AUTH_TOKEN` is configured in Vercel project settings prior to triggering the build.
+4. **V0 Invariant Check:** Load the deployed site anonymously at `/` without signing in. Confirm Markdown loading, Web Speech narration, seek gestures, speed cycling, and highlight modes function with zero friction.
+5. **V1 Auth Verification:** Click `Sign in` to verify PKCE redirect to `https://auth.yetvast.com`, callback exchange, profile avatar display, and clean sign-out.
