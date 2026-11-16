@@ -19,7 +19,11 @@ const CLOSING_MARKS = new Set([
   '"', "'", '”', '’', '»', ')', ']', '}', '›',
 ]);
 
-const ABBREVIATIONS = ['mr', 'mrs', 'ms', 'dr', 'prof', 'sr', 'jr', 'vs', 'etc', 'dept', 'est', 'approx', 'st'];
+const ABBREVIATIONS = [
+  'mr', 'mrs', 'ms', 'dr', 'prof', 'sr', 'jr', 'vs', 'etc',
+  'dept', 'est', 'approx', 'st', 'no', 'fig', 'inc', 'ltd', 'corp',
+  'gen', 'col', 'sgt', 'jan', 'feb', 'mar', 'apr', 'aug', 'sept', 'sep', 'oct', 'nov', 'dec'
+];
 
 /**
  * Checks whether a dot character at dotIdx is part of a common English abbreviation.

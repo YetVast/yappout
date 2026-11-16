@@ -1,6 +1,7 @@
 'use client';
 // src/hooks/useYappout.ts
 // Primary React hook for YappOut TTS and synchronized non-mutating reading
+// Features: session-guarded playback, mobile browser lifecycle recovery, Media Session API support
 
 import { useState, useEffect, useRef, useCallback, useMemo, RefObject } from 'react';
 import {
@@ -27,6 +28,7 @@ import {
 } from '../core/speedController';
 import { attachDoubleTapHandler } from '../utils/doubleTapDetector';
 import { createSpeechSynthesisAdapter } from '../adapters/speechSynthesisAdapter';
+import { logDiagnostic } from '../utils/logger';
 
 export interface UseYappoutOptions {
   title: string;
@@ -75,6 +77,11 @@ export function useYappout({
     }
   }, [speechAdapter]);
 
+  // Eagerly initialize voice availability on mount
+  useEffect(() => {
+    adapterRef.current.initVoices?.().catch(() => {});
+  }, []);
+
   // Purely derived reading sequence containing segments and words
   const readingSequence = useMemo(() => {
     if (!title && !content) {
@@ -108,6 +115,7 @@ export function useYappout({
 
   // Keep state refs in sync
   const updatePlaybackState = useCallback((state: PlaybackState) => {
+    logDiagnostic('Session', `PlaybackState changed to: ${state}`);
     playbackStateRef.current = state;
     setPlaybackState(state);
   }, []);
@@ -122,6 +130,7 @@ export function useYappout({
   useEffect(() => {
     const currentKey = `${title}:::${content}`;
     if (prevContentKeyRef.current !== currentKey) {
+      logDiagnostic('Session', 'Content changed, resetting session');
       prevContentKeyRef.current = currentKey;
       sessionIdRef.current++;
       adapterRef.current.cancel();
@@ -176,10 +185,14 @@ export function useYappout({
   // Core play function with monotonic session ID guard
   const doPlay = useCallback(
     (fromIndex: number) => {
-      if (!adapterRef.current.isSupported()) return;
+      if (!adapterRef.current.isSupported()) {
+        logDiagnostic('Playback', 'Speech synthesis is unsupported on this browser');
+        return;
+      }
 
       adapterRef.current.cancel();
       const sessionId = ++sessionIdRef.current;
+      logDiagnostic('Session', `Starting session ${sessionId} at segment ${fromIndex}`);
       updatePlaybackState('playing');
 
       speakSegmentBySegment(
@@ -193,11 +206,12 @@ export function useYappout({
             updateCurrentSegmentIndex(idx);
           },
           onComplete: () => {
+            logDiagnostic('Playback', `Session ${sessionId} completed`);
             updatePlaybackState('completed');
             updateCurrentSegmentIndex(0);
           },
-          onError: () => {
-            // Error handling maintains sequence or safe fallback
+          onError: (err) => {
+            logDiagnostic('Recovery', `Session ${sessionId} error callback`, { error: err });
           },
         },
         adapterRef.current,
@@ -214,6 +228,7 @@ export function useYappout({
   }, [doPlay]);
 
   const stop = useCallback(() => {
+    logDiagnostic('Session', `Stopping playback (session ${sessionIdRef.current})`);
     sessionIdRef.current++;
     adapterRef.current.cancel();
     updatePlaybackState('stopped');
@@ -222,6 +237,7 @@ export function useYappout({
 
   const seekTo = useCallback(
     (segmentIndex: number) => {
+      logDiagnostic('Session', `Seeking to segment ${segmentIndex}`);
       sessionIdRef.current++;
       adapterRef.current.cancel();
       updateCurrentSegmentIndex(segmentIndex);
@@ -233,37 +249,203 @@ export function useYappout({
   const cycleSpeed = useCallback(() => {
     setSpeedCycleIdx((prev) => {
       const next = nextSpeedIdx(prev);
-      speedRef.current = SPEED_CYCLE[next];
+      const newSpeed = SPEED_CYCLE[next];
+      speedRef.current = newSpeed;
+      logDiagnostic('Playback', `Cycling speed to ${newSpeed}x`);
 
       // If playing, restart from current segment with new speed without resetting to beginning
       if (playbackStateRef.current === 'playing') {
         const currentIdx = currentSegmentIndexRef.current;
-        setTimeout(() => {
-          if (playbackStateRef.current === 'playing') {
-            adapterRef.current.cancel();
-            const newSessionId = ++sessionIdRef.current;
-            speakSegmentBySegment(
-              readingSequenceRef.current.segments,
-              currentIdx,
-              speedRef.current,
-              newSessionId,
-              () => sessionIdRef.current,
-              {
-                onSegmentChange: (idx) => updateCurrentSegmentIndex(idx),
-                onComplete: () => {
-                  updatePlaybackState('completed');
-                  updateCurrentSegmentIndex(0);
-                },
-              },
-              adapterRef.current,
-            );
-          }
-        }, 0);
+        adapterRef.current.cancel();
+        const newSessionId = ++sessionIdRef.current;
+        speakSegmentBySegment(
+          readingSequenceRef.current.segments,
+          currentIdx,
+          newSpeed,
+          newSessionId,
+          () => sessionIdRef.current,
+          {
+            onSegmentChange: (idx) => updateCurrentSegmentIndex(idx),
+            onComplete: () => {
+              updatePlaybackState('completed');
+              updateCurrentSegmentIndex(0);
+            },
+          },
+          adapterRef.current,
+        );
       }
 
       return next;
     });
   }, [updatePlaybackState, updateCurrentSegmentIndex]);
+
+  // Mobile browser lifecycle handling: visibilitychange, pagehide, pageshow, focus, blur
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+    const handleVisibilityChange = () => {
+      const isHidden = document.visibilityState === 'hidden';
+      logDiagnostic('Lifecycle', `visibilitychange: ${document.visibilityState}`, {
+        playbackState: playbackStateRef.current,
+        currentSegment: currentSegmentIndexRef.current,
+      });
+
+      // Do NOT automatically stop playback when hidden
+      if (!isHidden && playbackStateRef.current === 'playing') {
+        const adapter = adapterRef.current;
+        const state = adapter.getState ? adapter.getState() : null;
+
+        if (state?.paused) {
+          logDiagnostic('Lifecycle', 'Resuming paused speech synthesis after returning to foreground');
+          adapter.resume?.();
+        } else if (state && !state.speaking && !state.pending) {
+          // Engine halted or suspended while hidden; cleanly recover from current segment
+          logDiagnostic('Lifecycle', 'Speech engine suspended while hidden. Recovering active segment.', {
+            segmentIndex: currentSegmentIndexRef.current,
+          });
+          adapter.cancel();
+          const newSessionId = ++sessionIdRef.current;
+          speakSegmentBySegment(
+            readingSequenceRef.current.segments,
+            currentSegmentIndexRef.current,
+            speedRef.current,
+            newSessionId,
+            () => sessionIdRef.current,
+            {
+              onSegmentChange: (idx) => updateCurrentSegmentIndex(idx),
+              onComplete: () => {
+                updatePlaybackState('completed');
+                updateCurrentSegmentIndex(0);
+              },
+            },
+            adapterRef.current,
+          );
+        }
+      }
+    };
+
+    const handlePageHide = (e: PageTransitionEvent) => {
+      logDiagnostic('Lifecycle', `pagehide (persisted: ${e.persisted})`, {
+        playbackState: playbackStateRef.current,
+      });
+    };
+
+    const handlePageShow = (e: PageTransitionEvent) => {
+      logDiagnostic('Lifecycle', `pageshow (persisted: ${e.persisted})`, {
+        playbackState: playbackStateRef.current,
+      });
+      if (e.persisted && playbackStateRef.current === 'playing') {
+        handleVisibilityChange();
+      }
+    };
+
+    const handleFocus = () => {
+      logDiagnostic('Lifecycle', 'focus event');
+      if (playbackStateRef.current === 'playing') {
+        adapterRef.current.resume?.();
+      }
+    };
+
+    const handleBlur = () => {
+      logDiagnostic('Lifecycle', 'blur event');
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [updatePlaybackState, updateCurrentSegmentIndex]);
+
+  // Media Session API integration (optional, feature-detected, zero-backend, zero-silent-audio)
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) {
+      return;
+    }
+
+    try {
+      const nav = navigator;
+
+      // Update metadata
+      if (typeof window !== 'undefined' && 'MediaMetadata' in window) {
+        nav.mediaSession.metadata = new MediaMetadata({
+          title: title.trim() || 'YappOut Reader',
+          artist: 'YappOut',
+          album: 'Audio-First Reading',
+        });
+      }
+
+      // Update playbackState
+      if (playbackState === 'playing') {
+        nav.mediaSession.playbackState = 'playing';
+      } else if (playbackState === 'stopped') {
+        nav.mediaSession.playbackState = 'paused';
+      } else {
+        nav.mediaSession.playbackState = 'none';
+      }
+
+      const totalSegments = readingSequenceRef.current.segments.length;
+
+      const handleMediaPlay = () => {
+        logDiagnostic('MediaSession', 'Action: play');
+        play();
+      };
+
+      const handleMediaPause = () => {
+        logDiagnostic('MediaSession', 'Action: pause');
+        stop();
+      };
+
+      const handleMediaStop = () => {
+        logDiagnostic('MediaSession', 'Action: stop');
+        stop();
+      };
+
+      const handleNextTrack = () => {
+        logDiagnostic('MediaSession', 'Action: nexttrack');
+        const nextIdx = currentSegmentIndexRef.current + 1;
+        if (nextIdx < totalSegments) {
+          seekTo(nextIdx);
+        }
+      };
+
+      const handlePreviousTrack = () => {
+        logDiagnostic('MediaSession', 'Action: previoustrack');
+        const prevIdx = currentSegmentIndexRef.current - 1;
+        if (prevIdx >= 0) {
+          seekTo(prevIdx);
+        }
+      };
+
+      nav.mediaSession.setActionHandler('play', handleMediaPlay);
+      nav.mediaSession.setActionHandler('pause', handleMediaPause);
+      nav.mediaSession.setActionHandler('stop', handleMediaStop);
+      nav.mediaSession.setActionHandler('nexttrack', handleNextTrack);
+      nav.mediaSession.setActionHandler('previoustrack', handlePreviousTrack);
+
+      return () => {
+        try {
+          nav.mediaSession.setActionHandler('play', null);
+          nav.mediaSession.setActionHandler('pause', null);
+          nav.mediaSession.setActionHandler('stop', null);
+          nav.mediaSession.setActionHandler('nexttrack', null);
+          nav.mediaSession.setActionHandler('previoustrack', null);
+        } catch {
+          // Ignore action handler removal errors
+        }
+      };
+    } catch {
+      // Ignore browsers with partial Media Session API implementation
+    }
+  }, [playbackState, title, play, stop, seekTo]);
 
   // Attach double-click / double-tap handlers for segment seeking
   useEffect(() => {

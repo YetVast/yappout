@@ -52,13 +52,26 @@ export interface RectItem {
   height: number;
 }
 
+export interface SpeechEngineState {
+  speaking: boolean;
+  pending: boolean;
+  paused: boolean;
+  voiceName?: string;
+  voicesCount: number;
+}
+
 export interface SpeechAdapter {
   speak(
     text: string,
     rate: number,
     onEnd: () => void,
     onError: (error?: string) => void,
+    onStart?: () => void,
   ): void;
   cancel(): void;
   isSupported(): boolean;
+  pause?(): void;
+  resume?(): void;
+  getState?(): SpeechEngineState;
+  initVoices?(): Promise<SpeechSynthesisVoice[]>;
 }
