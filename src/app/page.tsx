@@ -1,32 +1,22 @@
 'use client';
 // src/app/page.tsx
-// Standalone YappOut V0 homepage: complete audio-first synchronized reading experience
+// Standalone YappOut V0 homepage: audio-first synchronized reader with highlight modes and collapsible editor
 
-import { useState, useRef, useTransition } from 'react';
+import { useState, useRef, useTransition, useMemo } from 'react';
 import { Header } from '@/components/layout/Header';
 import { ContentEditor } from '@/components/input/ContentEditor';
 import { PlayerControls } from '@/components/player/PlayerControls';
 import { ReadingCanvas } from '@/components/reader/ReadingCanvas';
 import { useYappout } from '@/hooks/useYappout';
+import { HighlightMode } from '@/types';
+import { DEFAULT_HIGHLIGHT_MODE, getNextHighlightMode } from '@/constants';
 import styles from './page.module.css';
-
-const SAMPLE_TITLE = 'The Art of Synchronized Reading';
-const SAMPLE_CONTENT = `YappOut transforms how you consume long-form text. By synchronizing natural speech synthesis with precise visual highlighting, your eyes and ears work together in seamless harmony.
-
-Dual-modality reading significantly increases reading comprehension and sustained focus. Whether you are reviewing technical documentation, studying dense scientific papers, or catching up on newsletters, active visual anchoring prevents cognitive fatigue and line-skipping.
-
-### Key Capabilities
-
-- **Zero DOM Mutation:** Unlike ordinary screen extensions, YappOut never injects intrusive spans or marks into your document.
-- **Natural Boundary Detection:** Sentences and clauses split at natural punctuation marks like commas, periods, and colons.
-- **Abbreviation & Number Awareness:** Common abbreviations like Dr. Smith, e.g., and etc., as well as numerical figures like 3.14 and 10,000, remain contiguous and uninterrupted.
-- **Spatial Caret Seeking:** Notice an interesting section further down? Double-click on desktop or double-tap on mobile anywhere on this text to instantly jump playback to that exact sentence!
-
-Give it a try now: adjust the playback speed, tap any sentence to seek, and experience fluid, audio-first reading.`;
 
 export default function HomePage() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [isEditorMinimized, setIsEditorMinimized] = useState(false);
+  const [highlightMode, setHighlightMode] = useState<HighlightMode>(DEFAULT_HIGHLIGHT_MODE);
   const [, startTransition] = useTransition();
 
   const titleRef = useRef<HTMLHeadingElement | null>(null);
@@ -50,42 +40,78 @@ export default function HomePage() {
     scrollContainerRef,
   });
 
+  // Calculate approximate word count
+  const wordCount = useMemo(() => {
+    const combined = `${title} ${content}`.trim();
+    if (!combined) return 0;
+    return combined.split(/\s+/).filter((w) => w.length > 0).length;
+  }, [title, content]);
+
+  // Estimated reading duration in minutes (avg 160 wpm speech synthesis rate)
+  const readingTime = useMemo(() => {
+    if (wordCount === 0) return '0 min';
+    const minutes = wordCount / 160;
+    if (minutes < 1) return '< 1 min';
+    return `${Math.ceil(minutes)} min`;
+  }, [wordCount]);
+
   const handleClear = () => {
     stop();
     startTransition(() => {
       setTitle('');
       setContent('');
+      setIsEditorMinimized(false);
     });
   };
 
-  const handleLoadSample = () => {
+  const handleLoadSample = async () => {
     stop();
-    startTransition(() => {
-      setTitle(SAMPLE_TITLE);
-      setContent(SAMPLE_CONTENT);
-    });
+    try {
+      const res = await fetch('/yappout-info.json');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const sampleTitle = typeof data.sampleTitle === 'string' ? data.sampleTitle : '';
+      const sampleBody = typeof data.sampleBody === 'string' ? data.sampleBody : '';
+
+      stop();
+      startTransition(() => {
+        setTitle(sampleTitle);
+        setContent(sampleBody);
+        setIsEditorMinimized(false);
+      });
+    } catch (err) {
+      console.error('Failed to load sample content from yappout-info.json:', err);
+    }
+  };
+
+  const handlePlay = () => {
+    setIsEditorMinimized(true);
+    play();
+  };
+
+  const handleCycleHighlightMode = () => {
+    setHighlightMode((prev) => getNextHighlightMode(prev));
+  };
+
+  const handleToggleMinimize = () => {
+    setIsEditorMinimized((prev) => !prev);
   };
 
   const hasContent = title.trim().length > 0 || content.trim().length > 0;
 
   return (
     <div className={styles.main}>
-      <Header />
+      <Header onLoadSample={handleLoadSample} />
 
       <main className={styles.contentWrapper}>
-        <section className={styles.introSection}>
-          <h2 className={styles.heroHeading}>Listen and read in perfect sync</h2>
-          <p className={styles.heroSubtitle}>
-            Paste any text or Markdown below. YappOut reads your document aloud while tracking the active sentence in real time.
-          </p>
-        </section>
-
         <section className={styles.workspaceSection}>
           <ContentEditor
             title={title}
             content={content}
+            isMinimized={isEditorMinimized}
             onTitleChange={setTitle}
             onContentChange={setContent}
+            onToggleMinimize={handleToggleMinimize}
             onClear={handleClear}
             onLoadSample={handleLoadSample}
           />
@@ -96,10 +122,14 @@ export default function HomePage() {
               currentSegmentIndex={currentSegmentIndex}
               totalSegments={readingSequence.segments.length}
               speedLabel={speedLabel}
+              highlightMode={highlightMode}
+              wordCount={wordCount}
+              readingTime={readingTime}
               hasContent={hasContent}
-              onPlay={play}
+              onPlay={handlePlay}
               onStop={stop}
               onCycleSpeed={cycleSpeed}
+              onCycleHighlightMode={handleCycleHighlightMode}
             />
           </div>
 
@@ -110,6 +140,7 @@ export default function HomePage() {
             bodyRef={bodyRef}
             scrollContainerRef={scrollContainerRef}
             activeRange={activeRange}
+            highlightMode={highlightMode}
           />
         </section>
       </main>

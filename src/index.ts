@@ -16,6 +16,7 @@ export * from './utils/markdownExtractor';
 export * from './utils/doubleTapDetector';
 export * from './components/player/YappOutButton';
 export * from './components/player/YappOutSpeed';
+export * from './components/player/HighlightModeSelector';
 export * from './components/player/PlayerControls';
 export * from './components/reader/YappoutHighlight';
 export * from './components/reader/ReadingCanvas';

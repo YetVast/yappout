@@ -3,6 +3,8 @@
 
 export type PlaybackState = 'idle' | 'playing' | 'stopped' | 'completed';
 
+export type HighlightMode = 'box' | 'underline' | 'background' | 'bold';
+
 export interface WordToken {
   index: number;
   text: string;

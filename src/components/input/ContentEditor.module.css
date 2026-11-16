@@ -5,8 +5,16 @@
   gap: 0.75rem;
 }
 
-.titleInput {
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   width: 100%;
+}
+
+.titleInput {
+  flex: 1;
+  min-width: 0;
   padding: 0.75rem 1rem;
   font-size: 1.15rem;
   font-weight: 600;
@@ -25,6 +33,53 @@
 .titleInput::placeholder {
   color: var(--text-muted);
   font-weight: 400;
+}
+
+.titleAction {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.titleControlBtn {
+  height: 44px;
+  width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.titleControlBtn:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border-color: var(--border-strong);
+}
+
+.titleSampleBtn {
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--action-secondary-border);
+  background: var(--action-secondary-bg);
+  color: var(--action-secondary-text);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.titleSampleBtn:hover {
+  background: var(--action-secondary-hover);
+  border-color: var(--border-strong);
 }
 
 .editorCard {
@@ -68,22 +123,15 @@
   gap: 0.5rem;
 }
 
-.stats {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.statItem {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
+.footerPlaceholder {
+  flex: 1;
 }
 
 .actions {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  margin-left: auto;
 }
 
 .btnSecondary {
@@ -98,6 +146,7 @@
   background: var(--bg-surface);
   color: var(--text-secondary);
   transition: all var(--transition-fast);
+  cursor: pointer;
 }
 
 .btnSecondary:hover {
@@ -106,7 +155,8 @@
   border-color: var(--border-strong);
 }
 
-.btnSecondary.destructive:hover {
+.destructive:hover {
   color: #DC2626;
-  border-color: #F87171;
+  border-color: #DC2626;
+  background: rgba(220, 38, 38, 0.05);
 }

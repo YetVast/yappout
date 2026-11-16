@@ -1,11 +1,12 @@
 'use client';
 // src/components/reader/ReadingCanvas.tsx
-// Rendered reading canvas with non-mutating synchronized highlight overlay
+// Rendered reading canvas with non-mutating synchronized highlight overlay supporting multiple visual modes
 
 import { useMemo, RefObject } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'isomorphic-dompurify';
-import { MousePointerClick, BookOpen } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
+import { HighlightMode } from '@/types';
 import { YappoutHighlight } from './YappoutHighlight';
 import styles from './ReadingCanvas.module.css';
 
@@ -16,6 +17,7 @@ interface ReadingCanvasProps {
   bodyRef: RefObject<HTMLDivElement | null>;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
   activeRange: Range | null;
+  highlightMode?: HighlightMode;
 }
 
 export function ReadingCanvas({
@@ -25,6 +27,7 @@ export function ReadingCanvas({
   bodyRef,
   scrollContainerRef,
   activeRange,
+  highlightMode = 'box',
 }: ReadingCanvasProps) {
   // Parse markdown into clean, sanitized HTML
   const renderedHtml = useMemo(() => {
@@ -45,12 +48,6 @@ export function ReadingCanvas({
     <div className={styles.canvasWrapper}>
       <div className={styles.canvasHeader}>
         <span>Reading Canvas</span>
-        {hasContent && (
-          <span className={styles.hintText}>
-            <MousePointerClick size={14} />
-            <span>Double-click or double-tap any sentence to seek</span>
-          </span>
-        )}
       </div>
 
       <div ref={scrollContainerRef} className={styles.scrollContainer}>
@@ -86,6 +83,7 @@ export function ReadingCanvas({
         <YappoutHighlight
           activeRange={activeRange}
           scrollContainerRef={scrollContainerRef}
+          highlightMode={highlightMode}
         />
       </div>
     </div>

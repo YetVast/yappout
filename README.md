@@ -16,18 +16,26 @@
 The V0 objective is intentionally frictionless:
 Any visitor can open YappOut, paste or type content of any practical length, click the **YappOut** button, and immediately start listening with visual synchronization.
 
-No authentication, registration, database, persistence, or external backend is required. All speech synthesis and text processing run locally in the user's browser.
+No authentication, registration, database, persistence, or external backend is required. All speech synthesis, highlighting calculations, and text processing run locally in the user's browser.
 
 ---
 
 ## 2. Core V0 Features
 
-- **Responsive Content Input Workspace:** Large multiline text editor supporting plain text and Markdown without arbitrary character limits, featuring real-time word count, estimated reading duration, and empty-state guidance.
+- **Responsive & Collapsible Content Input Workspace:** Large multiline text editor supporting plain text and Markdown without arbitrary character limits. During playback, the editor automatically minimizes to keep the reading canvas in focus while leaving the title and expand/collapse controls accessible.
+- **Multiple Reading Highlight Modes:** Cycle seamlessly between four distinct visual presentation treatments using the highlight mode selector:
+  1. **Box highlight:** Canonical YVS Yellow outline with Indigo-Violet outer shadow around line rects.
+  2. **Underline:** Solid underline bar anchored directly along the bottom of the active sentence.
+  3. **Background:** Translucent highlighter color wash over the active sentence without box borders.
+  4. **Bold:** Bold typography treatment emphasizing the active sentence without box or background fills.
 - **Continuous Sequential Speech:** Uses the native browser Web Speech API (`window.speechSynthesis`) to speak sentences and clauses sequentially rather than submitting massive monolithic utterances.
 - **Non-Mutating Visual Highlighting:** Highlights the active segment using DOM Range calculations (`Range.getClientRects()`) projected onto a fixed-position floating overlay (`z-index: 9000`). The underlying document innerHTML is never mutated, preserving React component trees and Markdown formatting completely intact.
 - **Spatial Caret Seeking (Double-Click & Double-Tap):** Double-clicking (desktop) or double-tapping (touchscreen) on any text segment resolves client coordinates via browser caret APIs (`caretRangeFromPoint` / `caretPositionFromPoint`) and immediately re-anchors playback to that exact segment.
+- **Subtle Inline Gesture Guidance:** The double-click/double-tap seek instruction is positioned directly beneath the segment metadata in the player toolbar.
 - **Viewport Auto-Scrolling:** Smoothly scrolls the reading canvas container to maintain the active segment comfortably within view with an 80px margin buffer.
 - **In-Flight Speed Cycling:** Cycles playback speed through `1× → 1.5× → 2× → 0.5× → 0.75× → 1×`. Changing speeds continues playback from the current segment without restarting from the beginning.
+- **Reorganized Player Controls:** Clean control hierarchy placing the Highlight Mode selector, Speed selector, and Segment metadata & progress on the left, with the prominent YappOut playback button on the right.
+- **Single Source-of-Truth Product Information:** All product specifications and sample content reside in `public/yappout-info.json`, loaded on demand via the compact `v0` button in the header or contextual title-side action.
 - **Monotonic Session Guards:** Every play, stop, seek, or speed change increments a monotonic `sessionIdRef` token, completely preventing stale, out-of-order asynchronous TTS callbacks from causing state desynchronization.
 - **Yet Vast Solutions Design System:** Built using canonical brand colors:
   - **YVS Indigo-Violet:** `#4B0084`
@@ -52,6 +60,8 @@ No authentication, registration, database, persistence, or external backend is r
 ## 4. Repository Structure
 
 ```text
+public/
+└── yappout-info.json                 # Single source-of-truth product metadata & sample content
 src/
 ├── adapters/
 │   └── speechSynthesisAdapter.ts     # Web Speech API wrapper & mock test adapter
@@ -62,22 +72,23 @@ src/
 │   └── page.tsx                      # Primary standalone reading application
 ├── components/
 │   ├── input/
-│   │   ├── ContentEditor.module.css  # Editor styling
-│   │   └── ContentEditor.tsx         # Text editor, word counter & sample loader
+│   │   ├── ContentEditor.module.css  # Collapsible editor styling
+│   │   └── ContentEditor.tsx         # Text editor, collapsible card & contextual controls
 │   ├── layout/
-│   │   ├── Header.module.css         # Header styling
-│   │   └── Header.tsx                # Branding & light/dark theme toggle
+│   │   ├── Header.module.css         # Header styling & v0 badge
+│   │   └── Header.tsx                # Branding, v0 sample loader & theme switch
 │   ├── player/
-│   │   ├── PlayerControls.module.css # Controls styling
-│   │   ├── PlayerControls.tsx        # Unified playback toolbar
+│   │   ├── HighlightModeSelector.tsx # Presentation mode cycler
+│   │   ├── PlayerControls.module.css # Reorganized player toolbar styling
+│   │   ├── PlayerControls.tsx        # Unified playback toolbar with metadata & progress
 │   │   ├── YappOutButton.tsx         # Play/Stop primary action button
 │   │   └── YappOutSpeed.tsx          # Speed cycler button
 │   └── reader/
 │       ├── ReadingCanvas.module.css  # Reader typography & canvas styling
 │       ├── ReadingCanvas.tsx         # Rendered Markdown reader
-│       └── YappoutHighlight.tsx      # Fixed non-mutating highlight overlay
+│       └── YappoutHighlight.tsx      # Fixed non-mutating multi-mode highlight overlay
 ├── constants/
-│   └── index.ts                      # Canonical brand colors & playback buffer tokens
+│   └── index.ts                      # Brand tokens, highlight modes & playback speeds
 ├── core/
 │   ├── playbackController.ts         # Segment-by-segment session-guarded controller
 │   ├── readingSequence.ts            # Reading sequence construction from title + body
@@ -122,7 +133,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Quality Verification Commands
 
-- **Unit Tests:** `npm test` (Runs 28 automated Vitest unit tests)
+- **Unit Tests:** `npm test` (Runs 37 automated Vitest unit tests across 8 test suites)
 - **Type Checking:** `npm run typecheck` (`tsc --noEmit`)
 - **Linting:** `npm run lint` (`eslint .`)
 - **Production Build:** `npm run build` (`next build`)
@@ -139,20 +150,14 @@ YappOut V0 requires **no backend databases, no server-side storage, and zero env
 4. Leave Environment Variables empty.
 5. Click **Deploy**.
 
-The application will build statically and run immediately worldwide on Vercel's Edge/Serverless CDN.
+The application builds statically and runs immediately worldwide on Vercel's Edge/Serverless CDN.
 
 ---
 
 ## 7. Mandatory Engineering Conventions
 
-This standalone implementation was built in strict accordance with the Yet Vast Solutions Engineering Standards and the YappOut extraction specifications:
+This implementation strictly complies with the Yet Vast Solutions Engineering Standards:
 
-- **Zero DOM Mutation:** Highlighting is completely isolated from the document DOM tree.
-- **Zero Cost Phase:** Operates exclusively using client-side browser Web Speech API.
-- **Strict Scope Boundaries:** V0 omits user authentication, databases, and third-party APIs by design.
-
----
-
-## 8. License
-
-Copyright &copy; 2026 Yet Vast Solutions. All rights reserved.
+- **Zero DOM Mutation:** Highlighting is completely isolated from the document DOM tree via fixed Range overlays.
+- **Monotonic Sessions:** All asynchronous speech synthesis operations are protected against stale callbacks.
+- **Single Source of Truth:** Product specifications and sample Markdown content are maintained centrally in `public/yappout-info.json`.

@@ -1,0 +1,34 @@
+{
+  "productName": "YappOut",
+  "version": "V0",
+  "shortDescription": "Audio-first synchronized reader converting text into speech with visual tracking.",
+  "productPurpose": "Provide an immediate, frictionless reading experience where any user can paste or type text and Markdown to listen with real-time synchronized sentence-level visual highlighting and spatial seeking.",
+  "featureList": [
+    "Sequential Web Speech API playback",
+    "Punctuation-aware sentence and clause segmentation",
+    "Non-mutating visual highlight overlay architecture",
+    "Four selectable reading highlight modes: Box highlight, Underline, Background, and Bold",
+    "Spatial caret seeking via desktop double-click or mobile double-tap",
+    "Automatic viewport scrolling following active narration",
+    "Adaptive playback speed cycle (1×, 1.5×, 2×, 0.5×, 0.75×)",
+    "Collapsible reading editor workspace during playback",
+    "Light and dark theme support",
+    "Local browser-only processing with zero telemetry or backend persistence"
+  ],
+  "currentCapabilities": [
+    "Processes arbitrary plain text and Markdown",
+    "Sequential sentence-by-sentence utterance queuing with zero lag",
+    "Monotonic session ID protection preventing stale playback callbacks",
+    "Range-based getClientRects overlay supporting multiline sentences",
+    "Responsive mobile and desktop layout"
+  ],
+  "technicalApproach": "Standalone Next.js App Router application built with React 19, TypeScript strict mode, native browser Web Speech API (window.speechSynthesis), DOM Range APIs for non-mutating visual overlays, and CSS Modules with Yet Vast Solutions canonical design tokens.",
+  "currentLimitations": [
+    "Speech synthesis voice availability is governed by the host operating system and browser",
+    "No server-side document persistence or cloud sync (by design for V0 privacy and simplicity)",
+    "Mobile browser background audio may be restricted when browser tabs are backgrounded"
+  ],
+  "sampleTitle": "The Art of Synchronized Reading",
+  "sampleBody": "YappOut transforms how you consume long-form text. By synchronizing natural speech synthesis with precise visual highlighting, your eyes and ears work together in seamless harmony.\n\nDual-modality reading significantly increases reading comprehension and sustained focus. Whether you are reviewing technical documentation, studying dense scientific papers, or catching up on newsletters, active visual anchoring prevents cognitive fatigue and line-skipping.\n\n### Key Capabilities\n\n- **Zero DOM Mutation:** Unlike ordinary screen extensions, YappOut never injects intrusive spans or marks into your document.\n- **Multiple Reading Highlight Modes:** Switch effortlessly between Box highlight, Underline, Background, and Bold modes using the mode selector in the player bar.\n- **Natural Boundary Detection:** Sentences and clauses split at natural punctuation marks like commas, periods, and colons.\n- **Abbreviation & Number Awareness:** Common abbreviations like Dr. Smith, e.g., and etc., as well as numerical figures like 3.14 and 10,000, remain contiguous and uninterrupted.\n- **Spatial Caret Seeking:** Notice an interesting section further down? Double-click on desktop or double-tap on mobile anywhere on this text to instantly jump playback to that exact sentence!\n- **Adaptive Playback Speeds:** Cycle through 1×, 1.5×, 2×, 0.5×, and 0.75× speeds without restarting speech.\n\nGive it a try now: adjust the playback speed, cycle highlight modes, tap any sentence to seek, and experience fluid, audio-first reading.",
+  "lastUpdated": "2026-11-16"
+}
